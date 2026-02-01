@@ -105,6 +105,7 @@ The application runs on port 5000.
   - "Start Designing" button with blue glow effects
   - Particle effects background matching industrial theme
   - Smooth transition to main application
+  - Home button in toolbar to return to landing page
 
 ## Future Roadmap
 
