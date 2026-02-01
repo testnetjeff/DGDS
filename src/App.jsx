@@ -30,6 +30,7 @@ export default function App() {
   const [resolution, setResolution] = useState('medium');
   const [statusMessage, setStatusMessage] = useState(TARS_MESSAGES[0]);
   const [warnings, setWarnings] = useState([]);
+  const [editMode, setEditMode] = useState('select');
 
   useEffect(() => {
     const storedTutorial = localStorage.getItem('dgds_tutorial_shown');
@@ -65,7 +66,7 @@ export default function App() {
     if (!generatedPoints) return;
     
     try {
-      const geometry = createLatheGeometry(generatedPoints, 64, resolution);
+      const geometry = createLatheGeometry(generatedPoints, 64, resolution, true);
       downloadSTL(geometry, `disc_design_${resolution}.stl`);
       setStatusMessage("STL export complete. Manufacturing readiness confirmed.");
     } catch (e) {
@@ -88,6 +89,17 @@ export default function App() {
     setStatusMessage("Profile modified. Aerodynamic potential recalculating...");
   };
 
+  const handleEditModeChange = (mode) => {
+    setEditMode(mode);
+    if (mode === 'add') {
+      setStatusMessage("Add mode active. Click on canvas to place anchor point.");
+    } else if (mode === 'delete') {
+      setStatusMessage("Delete mode active. Click anchor point to remove.");
+    } else {
+      setStatusMessage("Select mode active. Drag points to modify profile.");
+    }
+  };
+
   return (
     <div className="app">
       {showTutorial && <Tutorial onClose={handleCloseTutorial} />}
@@ -102,6 +114,8 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         is3DGenerated={generatedPoints !== null}
+        editMode={editMode}
+        setEditMode={handleEditModeChange}
       />
 
       <main className="workspace">
@@ -111,6 +125,8 @@ export default function App() {
               controlPoints={controlPoints}
               setControlPoints={handlePointsChange}
               pdgaMode={pdgaMode}
+              editMode={editMode}
+              setStatusMessage={setStatusMessage}
             />
           </div>
         )}

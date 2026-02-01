@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { generateBezierPoints } from './bezier';
 
-export function createLatheGeometry(controlPoints, segments = 64, resolution = 'medium') {
+export function createLatheGeometry(controlPoints, segments = 64, resolution = 'medium', closed = true) {
   const resolutionMap = {
     low: { radialSegments: 24, curveSegments: 20 },
     medium: { radialSegments: 48, curveSegments: 40 },
@@ -10,9 +10,13 @@ export function createLatheGeometry(controlPoints, segments = 64, resolution = '
   
   const { radialSegments, curveSegments } = resolutionMap[resolution];
   
-  const bezierPoints = generateBezierPoints(controlPoints, curveSegments);
+  const bezierPoints = generateBezierPoints(controlPoints, curveSegments, closed);
   
-  const profilePoints = bezierPoints.map(p => new THREE.Vector2(p.x, -p.y));
+  if (bezierPoints.length < 2) {
+    throw new Error('Not enough points for geometry');
+  }
+  
+  const profilePoints = bezierPoints.map(p => new THREE.Vector2(Math.max(0, p.x), -p.y));
   
   const geometry = new THREE.LatheGeometry(profilePoints, radialSegments, 0, Math.PI * 2);
   geometry.computeVertexNormals();
@@ -38,11 +42,14 @@ export function geometryToSTL(geometry) {
     const u = { x: v2.x - v1.x, y: v2.y - v1.y, z: v2.z - v1.z };
     const v = { x: v3.x - v1.x, y: v3.y - v1.y, z: v3.z - v1.z };
     
-    return {
-      x: u.y * v.z - u.z * v.y,
-      y: u.z * v.x - u.x * v.z,
-      z: u.x * v.y - u.y * v.x
-    };
+    const nx = u.y * v.z - u.z * v.y;
+    const ny = u.z * v.x - u.x * v.z;
+    const nz = u.x * v.y - u.y * v.x;
+    
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (len === 0) return { x: 0, y: 1, z: 0 };
+    
+    return { x: nx / len, y: ny / len, z: nz / len };
   };
   
   const numTriangles = indices ? indices.count / 3 : vertices.count / 3;

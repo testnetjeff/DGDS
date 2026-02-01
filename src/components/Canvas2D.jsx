@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { generateBezierPoints, getReferenceDiscProfile } from '../utils/bezier';
+import { generateBezierPoints, getReferenceDiscProfile, addAnchorPoint, deleteAnchorPoint, findNearestSegment, getAnchors } from '../utils/bezier';
 import { constrainPoint } from '../utils/pdgaConstraints';
 
 const SCALE = 3;
-const OFFSET_X = 50;
-const OFFSET_Y = 150;
+const OFFSET_X = 150;
+const OFFSET_Y = 200;
 
-export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode }) {
+export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage }) {
   const canvasRef = useRef(null);
   const [dragging, setDragging] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -70,29 +70,46 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode }) 
       if (i === 0) ctx.moveTo(cp.x, cp.y);
       else ctx.lineTo(cp.x, cp.y);
     });
+    ctx.closePath();
     ctx.stroke();
     ctx.setLineDash([]);
     
     ctx.strokeStyle = 'rgba(130, 148, 161, 0.3)';
     ctx.lineWidth = 1;
-    for (let i = 0; i < controlPoints.length - 1; i += 3) {
-      const p0 = toCanvas(controlPoints[i]);
-      const p1 = toCanvas(controlPoints[i + 1] || controlPoints[i]);
-      const p2 = toCanvas(controlPoints[i + 2] || controlPoints[i + 1] || controlPoints[i]);
-      const p3 = toCanvas(controlPoints[i + 3] || controlPoints[i + 2] || controlPoints[i + 1] || controlPoints[i]);
-      
+    
+    controlPoints.forEach((point, idx) => {
+      if (point.type === 'control') {
+        const cp = toCanvas(point);
+        
+        if (idx > 0 && controlPoints[idx - 1]?.type === 'anchor') {
+          const anchor = toCanvas(controlPoints[idx - 1]);
+          ctx.beginPath();
+          ctx.moveTo(anchor.x, anchor.y);
+          ctx.lineTo(cp.x, cp.y);
+          ctx.stroke();
+        }
+        
+        if (idx < controlPoints.length - 1 && controlPoints[idx + 1]?.type === 'anchor') {
+          const anchor = toCanvas(controlPoints[idx + 1]);
+          ctx.beginPath();
+          ctx.moveTo(anchor.x, anchor.y);
+          ctx.lineTo(cp.x, cp.y);
+          ctx.stroke();
+        }
+      }
+    });
+    
+    const firstAnchorIdx = controlPoints.findIndex(p => p.type === 'anchor');
+    if (firstAnchorIdx > 0 && controlPoints[controlPoints.length - 1]?.type === 'control') {
+      const lastHandle = toCanvas(controlPoints[controlPoints.length - 1]);
+      const firstAnchor = toCanvas(controlPoints[firstAnchorIdx]);
       ctx.beginPath();
-      ctx.moveTo(p0.x, p0.y);
-      ctx.lineTo(p1.x, p1.y);
-      ctx.stroke();
-      
-      ctx.beginPath();
-      ctx.moveTo(p2.x, p2.y);
-      ctx.lineTo(p3.x, p3.y);
+      ctx.moveTo(firstAnchor.x, firstAnchor.y);
+      ctx.lineTo(lastHandle.x, lastHandle.y);
       ctx.stroke();
     }
     
-    const bezierPoints = generateBezierPoints(controlPoints, 50);
+    const bezierPoints = generateBezierPoints(controlPoints, 50, true);
     
     let hasConstrainedPoints = false;
     if (pdgaMode) {
@@ -101,24 +118,37 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode }) 
       });
     }
     
-    ctx.strokeStyle = hasConstrainedPoints ? '#FF8700' : '#8294A1';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    bezierPoints.forEach((p, i) => {
-      const cp = toCanvas(p);
-      if (i === 0) ctx.moveTo(cp.x, cp.y);
-      else ctx.lineTo(cp.x, cp.y);
-    });
-    ctx.stroke();
+    if (bezierPoints.length > 0) {
+      ctx.strokeStyle = hasConstrainedPoints ? '#FF8700' : '#8294A1';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      bezierPoints.forEach((p, i) => {
+        const cp = toCanvas(p);
+        if (i === 0) ctx.moveTo(cp.x, cp.y);
+        else ctx.lineTo(cp.x, cp.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+      
+      ctx.fillStyle = 'rgba(130, 148, 161, 0.05)';
+      ctx.fill();
+    }
     
     controlPoints.forEach((point, index) => {
       const cp = toCanvas(point);
       const isHovered = hoveredPoint === index;
       const isAnchor = point.type === 'anchor';
       
-      ctx.fillStyle = isAnchor 
-        ? (isHovered ? '#FF8700' : '#8294A1')
-        : (isHovered ? '#FF8700' : 'rgba(130, 148, 161, 0.6)');
+      let fillColor;
+      if (editMode === 'delete' && isAnchor && isHovered) {
+        fillColor = '#FF4444';
+      } else if (isAnchor) {
+        fillColor = isHovered ? '#FF8700' : '#8294A1';
+      } else {
+        fillColor = isHovered ? '#FF8700' : 'rgba(130, 148, 161, 0.6)';
+      }
+      
+      ctx.fillStyle = fillColor;
       
       ctx.beginPath();
       if (isAnchor) {
@@ -138,7 +168,20 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode }) 
       }
     });
     
-  }, [controlPoints, hoveredPoint, pdgaMode, toCanvas]);
+    const anchors = getAnchors(controlPoints);
+    ctx.fillStyle = 'rgba(130, 148, 161, 0.5)';
+    ctx.font = '11px JetBrains Mono';
+    ctx.fillText(`Anchors: ${anchors.length}`, 20, 30);
+    
+    if (editMode === 'add') {
+      ctx.fillStyle = 'rgba(76, 175, 80, 0.7)';
+      ctx.fillText('ADD MODE: Click on canvas to add point', 20, 50);
+    } else if (editMode === 'delete') {
+      ctx.fillStyle = 'rgba(255, 68, 68, 0.7)';
+      ctx.fillText('DELETE MODE: Click anchor point (circle) to remove', 20, 50);
+    }
+    
+  }, [controlPoints, hoveredPoint, pdgaMode, toCanvas, editMode]);
 
   useEffect(() => {
     draw();
@@ -180,7 +223,42 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode }) 
   const handleMouseDown = (e) => {
     const pos = getMousePos(e);
     const pointIndex = findPointAtPos(pos);
-    if (pointIndex !== null) {
+    
+    if (editMode === 'add') {
+      const worldPos = fromCanvas(pos.x, pos.y);
+      const nearestAnchor = findNearestSegment(controlPoints, worldPos);
+      const newPoints = addAnchorPoint(controlPoints, worldPos, nearestAnchor);
+      setControlPoints(newPoints);
+      if (setStatusMessage) {
+        setStatusMessage("Anchor point added. Profile topology updated.");
+      }
+      return;
+    }
+    
+    if (editMode === 'delete' && pointIndex !== null) {
+      const point = controlPoints[pointIndex];
+      if (point.type === 'anchor') {
+        const anchors = getAnchors(controlPoints);
+        if (anchors.length <= 3) {
+          if (setStatusMessage) {
+            setStatusMessage("Cannot delete. Minimum 3 anchor points required for closed shape.");
+          }
+          return;
+        }
+        const newPoints = deleteAnchorPoint(controlPoints, pointIndex);
+        setControlPoints(newPoints);
+        if (setStatusMessage) {
+          setStatusMessage("Anchor point removed. Recalculating geometry...");
+        }
+      } else {
+        if (setStatusMessage) {
+          setStatusMessage("Can only delete anchor points (circles), not handles (squares).");
+        }
+      }
+      return;
+    }
+    
+    if (editMode === 'select' && pointIndex !== null) {
       setDragging(pointIndex);
     }
   };
@@ -188,7 +266,7 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode }) 
   const handleMouseMove = (e) => {
     const pos = getMousePos(e);
     
-    if (dragging !== null) {
+    if (dragging !== null && editMode === 'select') {
       const newPos = fromCanvas(pos.x, pos.y);
       const constrainedPos = constrainPoint(newPos, pdgaMode, controlPoints);
       
@@ -217,13 +295,25 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode }) 
     setHoveredPoint(null);
   };
 
+  const getCursor = () => {
+    if (editMode === 'add') return 'crosshair';
+    if (editMode === 'delete') {
+      if (hoveredPoint !== null && controlPoints[hoveredPoint]?.type === 'anchor') {
+        return 'pointer';
+      }
+      return 'not-allowed';
+    }
+    if (hoveredPoint !== null) return 'grab';
+    return 'default';
+  };
+
   return (
     <canvas
       ref={canvasRef}
       style={{
         width: '100%',
         height: '100%',
-        cursor: hoveredPoint !== null ? 'grab' : 'default'
+        cursor: getCursor()
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
