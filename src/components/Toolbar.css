@@ -145,6 +145,15 @@
   color: var(--cubeular-orange);
 }
 
+.tool-btn.copy {
+  margin-left: 4px;
+}
+
+.tool-btn.copy:hover {
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;

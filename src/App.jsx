@@ -116,6 +116,16 @@ export default function App() {
     setStatusMessage("Profile reset to default. Ready for design input.");
   }, []);
 
+  const handleCopyProfile = useCallback(() => {
+    const profileJson = JSON.stringify(controlPoints, null, 2);
+    navigator.clipboard.writeText(profileJson).then(() => {
+      setStatusMessage("Profile coordinates copied to clipboard.");
+    }).catch(() => {
+      console.log(profileJson);
+      setStatusMessage("Profile logged to console. Check browser dev tools.");
+    });
+  }, [controlPoints]);
+
   if (!appStarted) {
     return <LandingPage onEnter={handleAppStart} />;
   }
@@ -138,6 +148,7 @@ export default function App() {
         setEditMode={handleEditModeChange}
         onBack={handleBack}
         onReset={handleReset}
+        onCopyProfile={handleCopyProfile}
       />
 
       <main className="workspace">
