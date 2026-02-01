@@ -33,6 +33,7 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState(TARS_MESSAGES[0]);
   const [warnings, setWarnings] = useState([]);
   const [editMode, setEditMode] = useState('select');
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const storedTutorial = localStorage.getItem('dgds_tutorial_shown');
@@ -126,6 +127,11 @@ export default function App() {
     });
   }, [controlPoints]);
 
+  const handleResetView = useCallback(() => {
+    setPanOffset({ x: 0, y: 0 });
+    setStatusMessage("View reset to origin.");
+  }, []);
+
   if (!appStarted) {
     return <LandingPage onEnter={handleAppStart} />;
   }
@@ -149,6 +155,7 @@ export default function App() {
         onBack={handleBack}
         onReset={handleReset}
         onCopyProfile={handleCopyProfile}
+        onResetView={handleResetView}
       />
 
       <main className="workspace">
@@ -160,6 +167,8 @@ export default function App() {
               pdgaMode={pdgaMode}
               editMode={editMode}
               setStatusMessage={setStatusMessage}
+              panOffset={panOffset}
+              setPanOffset={setPanOffset}
             />
           </div>
         )}

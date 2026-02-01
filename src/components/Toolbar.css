@@ -154,6 +154,15 @@
   color: #4CAF50;
 }
 
+.tool-btn.reset-view {
+  margin-left: 4px;
+}
+
+.tool-btn.reset-view:hover {
+  border-color: #64B5F6;
+  color: #64B5F6;
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;

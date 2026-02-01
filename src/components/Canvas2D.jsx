@@ -4,12 +4,11 @@ import { constrainPoint } from '../utils/pdgaConstraints';
 
 const SCALE = 3;
 
-export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage }) {
+export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage, panOffset, setPanOffset }) {
   const canvasRef = useRef(null);
   const [dragging, setDragging] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
