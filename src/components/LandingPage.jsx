@@ -96,7 +96,7 @@ export default function LandingPage({ onEnter }) {
       <div className="landing-footer">
         <span>Alumicube Engineering 2026</span>
         <span className="footer-divider">|</span>
-        <span>Precision Design Tools</span>
+        <span>Anomalous Materials</span>
       </div>
     </div>
   );
