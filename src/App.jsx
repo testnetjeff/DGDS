@@ -106,6 +106,10 @@ export default function App() {
     setAppStarted(true);
   }, []);
 
+  const handleBack = useCallback(() => {
+    setAppStarted(false);
+  }, []);
+
   if (!appStarted) {
     return <LandingPage onEnter={handleAppStart} />;
   }
@@ -126,6 +130,7 @@ export default function App() {
         is3DGenerated={generatedPoints !== null}
         editMode={editMode}
         setEditMode={handleEditModeChange}
+        onBack={handleBack}
       />
 
       <main className="workspace">

@@ -17,6 +17,26 @@
   max-width: 95vw;
 }
 
+.back-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  color: var(--sentient-steel-blue);
+  border-color: var(--sentient-steel-blue);
+  background: rgba(130, 148, 161, 0.1);
+}
+
 .toolbar-title {
   font-size: 12px;
   font-weight: 600;
