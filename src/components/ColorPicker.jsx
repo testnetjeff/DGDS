@@ -90,9 +90,6 @@ export default function ColorPicker({ color, setColor }) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       />
-      <div className="color-preview" style={{ background: color }}>
-        <span className="mono">{color}</span>
-      </div>
     </div>
   );
 }
