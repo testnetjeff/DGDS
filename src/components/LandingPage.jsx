@@ -56,7 +56,6 @@ export default function LandingPage({ onEnter }) {
         </div>
         
         <h1 className="app-title">DISC GOLF DESIGN STUDIO</h1>
-        <p className="app-subtitle">Professional CAD for disc profile engineering</p>
 
         {!isLoading ? (
           <button className="start-button" onClick={handleStart}>
@@ -95,7 +94,7 @@ export default function LandingPage({ onEnter }) {
       </div>
 
       <div className="landing-footer">
-        <span>Alumicube Engineering</span>
+        <span>Alumicube Engineering 2026</span>
         <span className="footer-divider">|</span>
         <span>Precision Design Tools</span>
       </div>
