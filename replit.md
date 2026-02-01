@@ -106,6 +106,9 @@ The application runs on port 5000.
   - Particle effects background matching industrial theme
   - Smooth transition to main application
   - Home button in toolbar to return to landing page
+- 2026-02-01: Added Copy Profile feature and custom default shape
+  - Copy Profile button exports current coordinates to clipboard as JSON
+  - Updated default disc profile with user's custom design
 
 ## Future Roadmap
 
