@@ -1,0 +1,48 @@
+.app {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--carbon-black);
+  overflow: hidden;
+}
+
+.workspace {
+  flex: 1;
+  padding-top: 80px;
+  padding-bottom: 32px;
+  position: relative;
+}
+
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.viewer-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.no-model-message {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  color: var(--text-secondary);
+}
+
+.no-model-message span {
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--sentient-steel-blue);
+}
+
+.no-model-message p {
+  font-size: 14px;
+}
