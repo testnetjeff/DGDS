@@ -110,6 +110,12 @@ export default function App() {
     setAppStarted(false);
   }, []);
 
+  const handleReset = useCallback(() => {
+    setControlPoints(getDefaultDiscProfile());
+    setGeneratedPoints(null);
+    setStatusMessage("Profile reset to default. Ready for design input.");
+  }, []);
+
   if (!appStarted) {
     return <LandingPage onEnter={handleAppStart} />;
   }
@@ -131,6 +137,7 @@ export default function App() {
         editMode={editMode}
         setEditMode={handleEditModeChange}
         onBack={handleBack}
+        onReset={handleReset}
       />
 
       <main className="workspace">
