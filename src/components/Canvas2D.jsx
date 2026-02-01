@@ -4,7 +4,7 @@ import { constrainPoint } from '../utils/pdgaConstraints';
 
 const SCALE = 3;
 
-export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage, panOffset, setPanOffset }) {
+export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage, panOffset, setPanOffset, zoom, setZoom }) {
   const canvasRef = useRef(null);
   const [dragging, setDragging] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -15,15 +15,17 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
   const offsetX = canvasSize.width / 2 + panOffset.x;
   const offsetY = canvasSize.height / 2 + panOffset.y;
 
+  const effectiveScale = SCALE * zoom;
+
   const toCanvas = useCallback((point) => ({
-    x: point.x * SCALE + offsetX,
-    y: point.y * SCALE + offsetY
-  }), [offsetX, offsetY]);
+    x: point.x * effectiveScale + offsetX,
+    y: point.y * effectiveScale + offsetY
+  }), [offsetX, offsetY, effectiveScale]);
 
   const fromCanvas = useCallback((x, y) => ({
-    x: (x - offsetX) / SCALE,
-    y: (y - offsetY) / SCALE
-  }), [offsetX, offsetY]);
+    x: (x - offsetX) / effectiveScale,
+    y: (y - offsetY) / effectiveScale
+  }), [offsetX, offsetY, effectiveScale]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -39,7 +41,7 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     ctx.strokeStyle = 'rgba(130, 148, 161, 0.1)';
     ctx.lineWidth = 1;
     
-    const gridSize = 30;
+    const gridSize = 30 * zoom;
     const startX = offsetX % gridSize;
     const startY = offsetY % gridSize;
     
@@ -203,7 +205,10 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       ctx.fillText('DELETE MODE: Click anchor point (circle) to remove', 20, 50);
     }
     
-  }, [controlPoints, hoveredPoint, pdgaMode, toCanvas, editMode, offsetX, offsetY]);
+    ctx.fillStyle = 'rgba(130, 148, 161, 0.5)';
+    ctx.fillText(`Zoom: ${(zoom * 100).toFixed(0)}%`, width - 100, 30);
+    
+  }, [controlPoints, hoveredPoint, pdgaMode, toCanvas, editMode, offsetX, offsetY, zoom]);
 
   useEffect(() => {
     draw();
@@ -354,6 +359,14 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     e.preventDefault();
   };
 
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const zoomFactor = 0.1;
+    const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor;
+    const newZoom = Math.min(Math.max(zoom + delta, 0.25), 5);
+    setZoom(newZoom);
+  };
+
   return (
     <canvas
       ref={canvasRef}
@@ -368,6 +381,7 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       onMouseLeave={handleMouseLeave}
       onContextMenu={handleContextMenu}
       onAuxClick={(e) => e.preventDefault()}
+      onWheel={handleWheel}
     />
   );
 }

@@ -34,6 +34,7 @@ export default function App() {
   const [warnings, setWarnings] = useState([]);
   const [editMode, setEditMode] = useState('select');
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     const storedTutorial = localStorage.getItem('dgds_tutorial_shown');
@@ -169,6 +170,8 @@ export default function App() {
               setStatusMessage={setStatusMessage}
               panOffset={panOffset}
               setPanOffset={setPanOffset}
+              zoom={zoom}
+              setZoom={setZoom}
             />
           </div>
         )}
