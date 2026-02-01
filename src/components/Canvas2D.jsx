@@ -3,23 +3,25 @@ import { generateBezierPoints, getReferenceDiscProfile, addAnchorPoint, deleteAn
 import { constrainPoint } from '../utils/pdgaConstraints';
 
 const SCALE = 3;
-const OFFSET_X = 150;
-const OFFSET_Y = 200;
 
 export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage }) {
   const canvasRef = useRef(null);
   const [dragging, setDragging] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+
+  const offsetX = canvasSize.width / 2;
+  const offsetY = canvasSize.height / 2;
 
   const toCanvas = useCallback((point) => ({
-    x: point.x * SCALE + OFFSET_X,
-    y: point.y * SCALE + OFFSET_Y
-  }), []);
+    x: point.x * SCALE + offsetX,
+    y: point.y * SCALE + offsetY
+  }), [offsetX, offsetY]);
 
   const fromCanvas = useCallback((x, y) => ({
-    x: (x - OFFSET_X) / SCALE,
-    y: (y - OFFSET_Y) / SCALE
-  }), []);
+    x: (x - offsetX) / SCALE,
+    y: (y - offsetY) / SCALE
+  }), [offsetX, offsetY]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -52,12 +54,12 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     ctx.strokeStyle = 'rgba(130, 148, 161, 0.3)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(OFFSET_X, 0);
-    ctx.lineTo(OFFSET_X, height);
+    ctx.moveTo(offsetX, 0);
+    ctx.lineTo(offsetX, height);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(0, OFFSET_Y);
-    ctx.lineTo(width, OFFSET_Y);
+    ctx.moveTo(0, offsetY);
+    ctx.lineTo(width, offsetY);
     ctx.stroke();
     
     const refProfile = getReferenceDiscProfile();
@@ -181,7 +183,7 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       ctx.fillText('DELETE MODE: Click anchor point (circle) to remove', 20, 50);
     }
     
-  }, [controlPoints, hoveredPoint, pdgaMode, toCanvas, editMode]);
+  }, [controlPoints, hoveredPoint, pdgaMode, toCanvas, editMode, offsetX, offsetY]);
 
   useEffect(() => {
     draw();
@@ -191,16 +193,18 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     const handleResize = () => {
       const canvas = canvasRef.current;
       if (canvas) {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight;
-        draw();
+        const width = canvas.parentElement.clientWidth;
+        const height = canvas.parentElement.clientHeight;
+        canvas.width = width;
+        canvas.height = height;
+        setCanvasSize({ width, height });
       }
     };
     
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [draw]);
+  }, []);
 
   const getMousePos = (e) => {
     const canvas = canvasRef.current;
