@@ -9,9 +9,12 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
   const [dragging, setDragging] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
-  const offsetX = canvasSize.width / 2;
-  const offsetY = canvasSize.height / 2;
+  const offsetX = canvasSize.width / 2 + panOffset.x;
+  const offsetY = canvasSize.height / 2 + panOffset.y;
 
   const toCanvas = useCallback((point) => ({
     x: point.x * SCALE + offsetX,
@@ -37,14 +40,18 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     ctx.strokeStyle = 'rgba(130, 148, 161, 0.1)';
     ctx.lineWidth = 1;
     
-    for (let x = 0; x < width; x += 30) {
+    const gridSize = 30;
+    const startX = offsetX % gridSize;
+    const startY = offsetY % gridSize;
+    
+    for (let x = startX; x < width; x += gridSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
       ctx.stroke();
     }
     
-    for (let y = 0; y < height; y += 30) {
+    for (let y = startY; y < height; y += gridSize) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
@@ -226,6 +233,14 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
 
   const handleMouseDown = (e) => {
     const pos = getMousePos(e);
+    
+    if (e.button === 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: pos.x - panOffset.x, y: pos.y - panOffset.y });
+      return;
+    }
+    
     const pointIndex = findPointAtPos(pos);
     
     if (editMode === 'add') {
@@ -270,6 +285,14 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
   const handleMouseMove = (e) => {
     const pos = getMousePos(e);
     
+    if (isPanning) {
+      setPanOffset({
+        x: pos.x - panStart.x,
+        y: pos.y - panStart.y
+      });
+      return;
+    }
+    
     if (dragging !== null && editMode === 'select') {
       const newPos = fromCanvas(pos.x, pos.y);
       const constrainedPos = constrainPoint(newPos, pdgaMode, controlPoints);
@@ -292,14 +315,17 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
 
   const handleMouseUp = () => {
     setDragging(null);
+    setIsPanning(false);
   };
 
   const handleMouseLeave = () => {
     setDragging(null);
     setHoveredPoint(null);
+    setIsPanning(false);
   };
 
   const getCursor = () => {
+    if (isPanning) return 'grabbing';
     if (editMode === 'add') return 'crosshair';
     if (editMode === 'delete') {
       if (hoveredPoint !== null && controlPoints[hoveredPoint]?.type === 'anchor') {
@@ -309,6 +335,10 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     }
     if (hoveredPoint !== null) return 'grab';
     return 'default';
+  };
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
   };
 
   return (
@@ -323,6 +353,8 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
+      onContextMenu={handleContextMenu}
+      onAuxClick={(e) => e.preventDefault()}
     />
   );
 }
