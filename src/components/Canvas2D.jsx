@@ -181,6 +181,20 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     ctx.font = '11px JetBrains Mono';
     ctx.fillText(`Anchors: ${anchors.length}`, 20, 30);
     
+    if (bezierPoints.length > 0) {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      bezierPoints.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      });
+      const widthMM = (maxX - minX).toFixed(1);
+      const heightMM = (maxY - minY).toFixed(1);
+      ctx.fillStyle = 'rgba(130, 148, 161, 0.7)';
+      ctx.fillText(`Width: ${widthMM} mm  |  Height: ${heightMM} mm`, 20, height - 20);
+    }
+    
     if (editMode === 'add') {
       ctx.fillStyle = 'rgba(76, 175, 80, 0.7)';
       ctx.fillText('ADD MODE: Click on canvas to add point', 20, 50);
