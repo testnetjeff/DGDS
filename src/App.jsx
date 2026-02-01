@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import LandingPage from './components/LandingPage';
 import Canvas2D from './components/Canvas2D';
 import Viewer3D from './components/Viewer3D';
 import Toolbar from './components/Toolbar';
@@ -21,6 +22,7 @@ const TARS_MESSAGES = [
 ];
 
 export default function App() {
+  const [appStarted, setAppStarted] = useState(false);
   const [showTutorial, setShowTutorial] = useState(true);
   const [activeTab, setActiveTab] = useState('2d');
   const [pdgaMode, setPdgaMode] = useState(false);
@@ -99,6 +101,14 @@ export default function App() {
       setStatusMessage("Select mode active. Drag points to modify profile.");
     }
   };
+
+  const handleAppStart = useCallback(() => {
+    setAppStarted(true);
+  }, []);
+
+  if (!appStarted) {
+    return <LandingPage onEnter={handleAppStart} />;
+  }
 
   return (
     <div className="app">
