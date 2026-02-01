@@ -46,6 +46,9 @@ src/
 - Draggable control points and handles
 - Ghost overlay of reference disc for scale comparison
 - Real-time Bezier curve rendering
+- **Closed shape profiles** - curves automatically connect last to first anchor
+- **Edit modes**: Select (pointer), Add (+), and Delete (-) tools
+- Dynamic point manipulation with visual feedback and mode indicators
 
 ### PDGA Compliance Mode
 - Toggle to enable/disable constraint enforcement
@@ -90,6 +93,12 @@ The application runs on port 5000.
   - PDGA compliance mode
   - Alumicube Industrial theme
   - Tutorial overlay and CFD placeholder
+- 2026-02-01: Added closed shape profiles with edit tools
+  - Closed loop Bezier curves (last anchor connects to first)
+  - Add anchor point tool (+) for inserting new points
+  - Delete anchor point tool (-) for removing points (minimum 3 required)
+  - Visual mode indicators and cursor feedback
+  - Improved seam handling for consistent curve closure
 
 ## Future Roadmap
 
