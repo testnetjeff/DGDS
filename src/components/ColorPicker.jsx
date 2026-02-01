@@ -79,7 +79,7 @@ export default function ColorPicker({ color, setColor }) {
 
   return (
     <div className="color-picker-container">
-      <div className="color-picker-label mono">SPECTRUM BOX</div>
+      <div className="color-picker-label mono">COLOR SELECTION</div>
       <canvas
         ref={canvasRef}
         width={200}
