@@ -70,21 +70,24 @@ export function generateBezierPoints(controlPoints, segments = 50, closed = true
 
 export function getDefaultDiscProfile() {
   return [
-    { x: -8, y: 0, type: 'control', id: 0 },
+    { x: -5, y: 2, type: 'control', id: 0 },
     { x: 0, y: 0, type: 'anchor', id: 1 },
-    { x: 30, y: -8, type: 'control', id: 2 },
-    { x: 45, y: -15, type: 'control', id: 3 },
-    { x: 55, y: -17, type: 'anchor', id: 4 },
-    { x: 80, y: -17, type: 'control', id: 5 },
-    { x: 100, y: -10, type: 'control', id: 6 },
-    { x: 107, y: 0, type: 'anchor', id: 7 },
-    { x: 115, y: 12, type: 'control', id: 8 },
-    { x: 107, y: 22, type: 'control', id: 9 },
-    { x: 95, y: 25, type: 'anchor', id: 10 },
-    { x: 65, y: 25, type: 'control', id: 11 },
-    { x: 30, y: 18, type: 'control', id: 12 },
-    { x: 15, y: 10, type: 'anchor', id: 13 },
-    { x: 0, y: 5, type: 'control', id: 14 },
+    { x: 15, y: -3, type: 'control', id: 2 },
+    { x: 40, y: -6, type: 'control', id: 3 },
+    { x: 70, y: -8, type: 'anchor', id: 4 },
+    { x: 90, y: -9, type: 'control', id: 5 },
+    { x: 100, y: -8, type: 'control', id: 6 },
+    { x: 105, y: -4, type: 'anchor', id: 7 },
+    { x: 108, y: 0, type: 'control', id: 8 },
+    { x: 110, y: 6, type: 'control', id: 9 },
+    { x: 108, y: 12, type: 'anchor', id: 10 },
+    { x: 105, y: 16, type: 'control', id: 11 },
+    { x: 98, y: 18, type: 'control', id: 12 },
+    { x: 92, y: 16, type: 'anchor', id: 13 },
+    { x: 85, y: 14, type: 'control', id: 14 },
+    { x: 50, y: 10, type: 'control', id: 15 },
+    { x: 25, y: 8, type: 'anchor', id: 16 },
+    { x: 10, y: 6, type: 'control', id: 17 },
   ];
 }
 
