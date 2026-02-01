@@ -1,0 +1,127 @@
+[
+  {
+    "x": -6,
+    "y": 4.333333333333333,
+    "type": "control",
+    "id": 0,
+    "isConstrained": false
+  },
+  {
+    "x": -0.6666666666666666,
+    "y": 2.3333333333333335,
+    "type": "anchor",
+    "id": 1,
+    "isConstrained": false
+  },
+  {
+    "x": 15,
+    "y": -3,
+    "type": "control",
+    "id": 2
+  },
+  {
+    "x": 41.666666666666664,
+    "y": -3.6666666666666665,
+    "type": "control",
+    "id": 3,
+    "isConstrained": false
+  },
+  {
+    "x": 74.33333333333333,
+    "y": -9,
+    "type": "anchor",
+    "id": 4,
+    "isConstrained": false
+  },
+  {
+    "x": 98.66666666666667,
+    "y": -13,
+    "type": "control",
+    "id": 5,
+    "isConstrained": false
+  },
+  {
+    "x": 106.33333333333333,
+    "y": -11,
+    "type": "control",
+    "id": 6,
+    "isConstrained": false
+  },
+  {
+    "x": 109.66666666666667,
+    "y": -8,
+    "type": "anchor",
+    "id": 7,
+    "isConstrained": false
+  },
+  {
+    "x": 120.33333333333333,
+    "y": 0.3333333333333333,
+    "type": "control",
+    "id": 8,
+    "isConstrained": false
+  },
+  {
+    "x": 122.33333333333333,
+    "y": 19,
+    "type": "control",
+    "id": 9,
+    "isConstrained": false
+  },
+  {
+    "x": 115.33333333333333,
+    "y": 21,
+    "type": "anchor",
+    "id": 10,
+    "isConstrained": false
+  },
+  {
+    "x": 104,
+    "y": 26,
+    "type": "control",
+    "id": 11,
+    "isConstrained": false
+  },
+  {
+    "x": 114.33333333333333,
+    "y": 15.666666666666666,
+    "type": "control",
+    "id": 12,
+    "isConstrained": false
+  },
+  {
+    "x": 109.33333333333333,
+    "y": 4.666666666666667,
+    "type": "anchor",
+    "id": 13,
+    "isConstrained": false
+  },
+  {
+    "x": 97.33333333333333,
+    "y": -5,
+    "type": "control",
+    "id": 14,
+    "isConstrained": false
+  },
+  {
+    "x": 59,
+    "y": 3.6666666666666665,
+    "type": "control",
+    "id": 15,
+    "isConstrained": false
+  },
+  {
+    "x": 1.3333333333333333,
+    "y": 9.666666666666666,
+    "type": "anchor",
+    "id": 16,
+    "isConstrained": false
+  },
+  {
+    "x": -8.666666666666666,
+    "y": 6.333333333333333,
+    "type": "control",
+    "id": 17,
+    "isConstrained": false
+  }
+]
