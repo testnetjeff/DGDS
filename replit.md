@@ -99,6 +99,12 @@ The application runs on port 5000.
   - Delete anchor point tool (-) for removing points (minimum 3 required)
   - Visual mode indicators and cursor feedback
   - Improved seam handling for consistent curve closure
+- 2026-02-01: Added landing page with company branding
+  - Alumicube Engineering logo prominently displayed
+  - Animated loading bar with system status messages
+  - "Start Designing" button with blue glow effects
+  - Particle effects background matching industrial theme
+  - Smooth transition to main application
 
 ## Future Roadmap
 
