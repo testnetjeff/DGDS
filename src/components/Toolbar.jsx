@@ -16,7 +16,9 @@ export default function Toolbar({
   onBack,
   onReset,
   onCopyProfile,
-  onResetView
+  onResetView,
+  designName,
+  setDesignName
 }) {
   return (
     <div className="toolbar">
@@ -28,6 +30,18 @@ export default function Toolbar({
           </svg>
         </button>
         <div className="toolbar-title mono">DISC GOLF DESIGN STUDIO</div>
+      </div>
+
+      <div className="toolbar-section design-name-section">
+        <span className="label mono">NAME:</span>
+        <input
+          type="text"
+          className="design-name-input mono"
+          value={designName}
+          onChange={(e) => setDesignName(e.target.value)}
+          placeholder="Enter design name"
+          maxLength={50}
+        />
       </div>
       
       <div className="toolbar-tabs">

@@ -35,6 +35,7 @@ export default function App() {
   const [editMode, setEditMode] = useState('select');
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [designName, setDesignName] = useState('Untitled Disc');
 
   useEffect(() => {
     const storedTutorial = localStorage.getItem('dgds_tutorial_shown');
@@ -71,7 +72,8 @@ export default function App() {
     
     try {
       const geometry = createLatheGeometry(generatedPoints, 64, resolution, true);
-      downloadSTL(geometry, `disc_design_${resolution}.stl`);
+      const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'disc_design';
+      downloadSTL(geometry, `${safeName}.stl`);
       setStatusMessage("STL export complete. Manufacturing readiness confirmed.");
     } catch (e) {
       console.error('Export error:', e);
@@ -157,6 +159,8 @@ export default function App() {
         onReset={handleReset}
         onCopyProfile={handleCopyProfile}
         onResetView={handleResetView}
+        designName={designName}
+        setDesignName={setDesignName}
       />
 
       <main className="workspace">

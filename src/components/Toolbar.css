@@ -302,3 +302,35 @@
   color: var(--text-secondary);
   cursor: help;
 }
+
+.design-name-section {
+  border-left: 1px solid var(--border-color);
+  padding-left: 12px;
+}
+
+.design-name-section .label {
+  font-size: 9px;
+  color: var(--text-secondary);
+}
+
+.design-name-input {
+  background: var(--dark-silver);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 6px 10px;
+  width: 140px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.design-name-input:focus {
+  border-color: var(--sentient-steel-blue);
+  box-shadow: 0 0 0 2px rgba(130, 148, 161, 0.2);
+}
+
+.design-name-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
