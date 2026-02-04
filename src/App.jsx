@@ -79,7 +79,7 @@ export default function App() {
       console.error('Export error:', e);
       setStatusMessage("Export failed. Geometry recalculation required.");
     }
-  }, [generatedPoints, resolution]);
+  }, [generatedPoints, resolution, designName]);
 
   const handlePdgaModeChange = (enabled) => {
     setPdgaMode(enabled);
