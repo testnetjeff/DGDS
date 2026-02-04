@@ -110,6 +110,16 @@ The application runs on port 5000.
   - Copy Profile button exports current coordinates to clipboard as JSON
   - Updated default disc profile with user's custom design
 
+## Mobile/Touch Support
+
+The application is fully touch-enabled for phones and tablets:
+- **Single touch**: Tap and drag to move control points
+- **Two-finger pinch**: Zoom in/out on the canvas
+- **Two-finger pan**: Move the canvas view
+- **3D Viewer**: One finger to rotate, two fingers to zoom/pan
+
+All buttons and controls have minimum 44px touch targets for easy tapping on mobile.
+
 ## Future Roadmap
 
 - Undo/redo functionality
