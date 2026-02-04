@@ -45,6 +45,13 @@ function Scene({ geometry, color }) {
         dampingFactor={0.05}
         minDistance={100}
         maxDistance={500}
+        enablePan={true}
+        enableZoom={true}
+        enableRotate={true}
+        touches={{
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN
+        }}
       />
       <Environment preset="studio" />
     </>

@@ -11,6 +11,11 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [touchState, setTouchState] = useState({ 
+    lastTouchDist: null, 
+    lastTouchCenter: null,
+    activeTouches: 0
+  });
 
   const offsetX = canvasSize.width / 2 + panOffset.x;
   const offsetY = canvasSize.height / 2 + panOffset.y;
@@ -240,6 +245,30 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     };
   };
 
+  const getTouchPos = (touch) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+  };
+
+  const getTouchDistance = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const getTouchCenter = (touches) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+      y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top
+    };
+  };
+
   const findPointAtPos = (pos) => {
     for (let i = 0; i < controlPoints.length; i++) {
       const cp = toCanvas(controlPoints[i]);
@@ -367,13 +396,148 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     setZoom(newZoom);
   };
 
+  const handleTouchStart = (e) => {
+    e.preventDefault();
+    const touches = e.touches;
+    
+    if (touches.length === 2) {
+      const dist = getTouchDistance(touches);
+      const center = getTouchCenter(touches);
+      setTouchState({
+        lastTouchDist: dist,
+        lastTouchCenter: center,
+        activeTouches: 2
+      });
+      setIsPanning(true);
+      return;
+    }
+    
+    if (touches.length === 1) {
+      const pos = getTouchPos(touches[0]);
+      const pointIndex = findPointAtPos(pos);
+      
+      setTouchState({
+        lastTouchDist: null,
+        lastTouchCenter: null,
+        activeTouches: 1
+      });
+      
+      if (editMode === 'add') {
+        const worldPos = fromCanvas(pos.x, pos.y);
+        const nearestAnchor = findNearestSegment(controlPoints, worldPos);
+        const newPoints = addAnchorPoint(controlPoints, worldPos, nearestAnchor);
+        setControlPoints(newPoints);
+        if (setStatusMessage) {
+          setStatusMessage("Anchor point added. Profile topology updated.");
+        }
+        return;
+      }
+      
+      if (editMode === 'delete' && pointIndex !== null) {
+        const point = controlPoints[pointIndex];
+        if (point.type === 'anchor') {
+          const anchors = getAnchors(controlPoints);
+          if (anchors.length <= 3) {
+            if (setStatusMessage) {
+              setStatusMessage("Cannot delete. Minimum 3 anchor points required for closed shape.");
+            }
+            return;
+          }
+          const newPoints = deleteAnchorPoint(controlPoints, pointIndex);
+          setControlPoints(newPoints);
+          if (setStatusMessage) {
+            setStatusMessage("Anchor point removed. Recalculating geometry...");
+          }
+        } else {
+          if (setStatusMessage) {
+            setStatusMessage("Can only delete anchor points (circles), not handles (squares).");
+          }
+        }
+        return;
+      }
+      
+      if (editMode === 'select' && pointIndex !== null) {
+        setDragging(pointIndex);
+        setHoveredPoint(pointIndex);
+      }
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    const touches = e.touches;
+    
+    if (touches.length === 2 && touchState.lastTouchDist !== null) {
+      const newDist = getTouchDistance(touches);
+      const newCenter = getTouchCenter(touches);
+      
+      const zoomDelta = (newDist - touchState.lastTouchDist) * 0.005;
+      const newZoom = Math.min(Math.max(zoom + zoomDelta, 0.25), 5);
+      setZoom(newZoom);
+      
+      if (touchState.lastTouchCenter) {
+        const dx = newCenter.x - touchState.lastTouchCenter.x;
+        const dy = newCenter.y - touchState.lastTouchCenter.y;
+        setPanOffset({
+          x: panOffset.x + dx,
+          y: panOffset.y + dy
+        });
+      }
+      
+      setTouchState({
+        lastTouchDist: newDist,
+        lastTouchCenter: newCenter,
+        activeTouches: 2
+      });
+      return;
+    }
+    
+    if (touches.length === 1 && dragging !== null && editMode === 'select') {
+      const pos = getTouchPos(touches[0]);
+      const newPos = fromCanvas(pos.x, pos.y);
+      const constrainedPos = constrainPoint(newPos, pdgaMode, controlPoints);
+      
+      setControlPoints(prev => {
+        const newPoints = [...prev];
+        newPoints[dragging] = {
+          ...newPoints[dragging],
+          x: constrainedPos.x,
+          y: constrainedPos.y,
+          isConstrained: constrainedPos.isConstrained
+        };
+        return newPoints;
+      });
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    if (e.touches.length === 0) {
+      setDragging(null);
+      setHoveredPoint(null);
+      setIsPanning(false);
+      setTouchState({
+        lastTouchDist: null,
+        lastTouchCenter: null,
+        activeTouches: 0
+      });
+    } else if (e.touches.length === 1) {
+      setTouchState({
+        lastTouchDist: null,
+        lastTouchCenter: null,
+        activeTouches: 1
+      });
+    }
+  };
+
   return (
     <canvas
       ref={canvasRef}
       style={{
         width: '100%',
         height: '100%',
-        cursor: getCursor()
+        cursor: getCursor(),
+        touchAction: 'none'
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -382,6 +546,10 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       onContextMenu={handleContextMenu}
       onAuxClick={(e) => e.preventDefault()}
       onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     />
   );
 }
