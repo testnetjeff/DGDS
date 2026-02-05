@@ -58,6 +58,12 @@ export default function Toolbar({
           INSPECTION DECK
         </button>
         <button 
+          className={`tab-btn ${activeTab === 'flight' ? 'active' : ''}`}
+          onClick={() => setActiveTab('flight')}
+        >
+          FLIGHT SIM
+        </button>
+        <button 
           className={`tab-btn ${activeTab === 'cfd' ? 'active' : ''}`}
           onClick={() => setActiveTab('cfd')}
         >

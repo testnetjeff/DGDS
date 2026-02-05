@@ -109,6 +109,14 @@ The application runs on port 5000.
 - 2026-02-01: Added Copy Profile feature and custom default shape
   - Copy Profile button exports current coordinates to clipboard as JSON
   - Updated default disc profile with user's custom design
+- 2026-02-05: Added Flight Simulator tab
+  - Top-down animated view showing disc flight path with gradient velocity trail
+  - Side view showing height arc during flight
+  - Rotating disc sprite that slows as it loses speed
+  - Flight numbers (Speed, Glide, Turn, Fade) derived from profile geometry
+  - Numbers displayed with two decimal places ending in .00, .25, .50, or .75
+  - Play/Pause/Reset controls for simulation
+  - Responsive mobile layout
 
 ## Mobile/Touch Support
 

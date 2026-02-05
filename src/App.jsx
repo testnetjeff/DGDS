@@ -6,6 +6,7 @@ import Toolbar from './components/Toolbar';
 import ColorPicker from './components/ColorPicker';
 import Tutorial from './components/Tutorial';
 import CFDPlaceholder from './components/CFDPlaceholder';
+import FlightSimulator from './components/FlightSimulator';
 import StatusBar from './components/StatusBar';
 import { getDefaultDiscProfile } from './utils/bezier';
 import { validateProfile } from './utils/pdgaConstraints';
@@ -197,6 +198,15 @@ export default function App() {
                 <p>Return to Drafting Table and click "Generate 3D Model"</p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'flight' && (
+          <div className="simulator-container">
+            <FlightSimulator 
+              controlPoints={controlPoints}
+              setStatusMessage={setStatusMessage}
+            />
           </div>
         )}
 
