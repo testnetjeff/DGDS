@@ -12,6 +12,7 @@
   padding-top: 80px;
   padding-bottom: 32px;
   position: relative;
+  overflow: hidden;
 }
 
 .canvas-container {
@@ -29,8 +30,13 @@
 .simulator-container {
   width: 100%;
   height: 100%;
-  position: relative;
-  overflow: auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .no-model-message {
