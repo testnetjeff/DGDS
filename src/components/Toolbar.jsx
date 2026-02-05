@@ -18,7 +18,9 @@ export default function Toolbar({
   onCopyProfile,
   onResetView,
   designName,
-  setDesignName
+  setDesignName,
+  onCalculateCl,
+  isCalculatingCl
 }) {
   return (
     <div className="toolbar">
@@ -150,6 +152,21 @@ export default function Toolbar({
           <span className="checkbox-custom"></span>
           <span className="mono">PDGA COMPLIANCE</span>
         </label>
+      </div>
+
+      <div className="toolbar-section">
+        <button 
+          className={`action-btn calculate-cl ${isCalculatingCl ? 'active' : ''}`}
+          onClick={onCalculateCl}
+          title="Calculate lift coefficient using thin airfoil theory"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+          <span>CALC Cₗ</span>
+        </button>
       </div>
       
       <div className="toolbar-section">

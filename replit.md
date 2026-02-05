@@ -117,6 +117,13 @@ The application runs on port 5000.
   - Numbers displayed with two decimal places ending in .00, .25, .50, or .75
   - Play/Pause/Reset controls for simulation
   - Responsive mobile layout
+- 2026-02-05: Added Lift Coefficient Calculator (Thin Airfoil Theory)
+  - CALC Cₗ button in toolbar triggers aerodynamic analysis
+  - Terminal-style popup shows real-time calculation steps
+  - Implements thin airfoil theory with proper camber line integration
+  - Calculates zero-lift angle (α₀) via numerical integration of camber slope
+  - Shows lift coefficient, camber ratio, thickness ratio, and aerodynamic parameters
+  - Animated step-by-step display matching industrial theme
 
 ## Mobile/Touch Support
 

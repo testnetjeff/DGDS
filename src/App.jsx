@@ -7,10 +7,12 @@ import ColorPicker from './components/ColorPicker';
 import Tutorial from './components/Tutorial';
 import CFDPlaceholder from './components/CFDPlaceholder';
 import FlightSimulator from './components/FlightSimulator';
+import CalculationTerminal from './components/CalculationTerminal';
 import StatusBar from './components/StatusBar';
 import { getDefaultDiscProfile } from './utils/bezier';
 import { validateProfile } from './utils/pdgaConstraints';
 import { createLatheGeometry, downloadSTL } from './utils/geometry';
+import { calculateLiftCoefficient } from './utils/thinAirfoil';
 import './App.css';
 
 const TARS_MESSAGES = [
@@ -37,6 +39,9 @@ export default function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [designName, setDesignName] = useState('Untitled Disc');
+  const [showClTerminal, setShowClTerminal] = useState(false);
+  const [clCalculationSteps, setClCalculationSteps] = useState([]);
+  const [clResult, setClResult] = useState(null);
 
   useEffect(() => {
     const storedTutorial = localStorage.getItem('dgds_tutorial_shown');
@@ -136,6 +141,25 @@ export default function App() {
     setStatusMessage("View reset to origin.");
   }, []);
 
+  const handleCalculateCl = useCallback(() => {
+    if (showClTerminal) {
+      setShowClTerminal(false);
+      return;
+    }
+    setStatusMessage("Initiating thin airfoil analysis...");
+    const result = calculateLiftCoefficient(controlPoints, 0);
+    setClCalculationSteps(result.steps);
+    setClResult(result);
+    setShowClTerminal(true);
+  }, [controlPoints, showClTerminal]);
+
+  const handleCloseClTerminal = useCallback(() => {
+    setShowClTerminal(false);
+    if (clResult && !clResult.error) {
+      setStatusMessage(`Lift coefficient analysis complete. Cₗ = ${clResult.cl.toFixed(4)}`);
+    }
+  }, [clResult]);
+
   if (!appStarted) {
     return <LandingPage onEnter={handleAppStart} />;
   }
@@ -162,6 +186,15 @@ export default function App() {
         onResetView={handleResetView}
         designName={designName}
         setDesignName={setDesignName}
+        onCalculateCl={handleCalculateCl}
+        isCalculatingCl={showClTerminal}
+      />
+
+      <CalculationTerminal
+        isOpen={showClTerminal}
+        onClose={handleCloseClTerminal}
+        calculationSteps={clCalculationSteps}
+        finalResult={clResult}
       />
 
       <main className="workspace">
