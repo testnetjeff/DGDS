@@ -128,13 +128,19 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  position: relative;
+  z-index: 100;
+  padding: 16px 0;
 }
 
 .sim-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 12px 20px;
+  min-height: 48px;
+  min-width: 100px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   font-weight: 600;
@@ -143,6 +149,9 @@
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .sim-btn.play {
