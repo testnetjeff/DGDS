@@ -10,8 +10,21 @@ export default function CalculationTerminal({
 }) {
   const [displayedSteps, setDisplayedSteps] = useState([]);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 80 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const terminalRef = useRef(null);
   const contentRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const windowWidth = window.innerWidth;
+      setPosition({ 
+        x: Math.max(10, (windowWidth - 600) / 2), 
+        y: 80 
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && calculationSteps && calculationSteps.length > 0) {
@@ -19,9 +32,14 @@ export default function CalculationTerminal({
       setIsCalculating(true);
       
       let stepIndex = 0;
+      const stepsToShow = [...calculationSteps];
+      
       const interval = setInterval(() => {
-        if (stepIndex < calculationSteps.length) {
-          setDisplayedSteps(prev => [...prev, calculationSteps[stepIndex]]);
+        if (stepIndex < stepsToShow.length) {
+          const currentStep = stepsToShow[stepIndex];
+          if (currentStep) {
+            setDisplayedSteps(prev => [...prev, currentStep]);
+          }
           stepIndex++;
         } else {
           clearInterval(interval);
@@ -38,6 +56,65 @@ export default function CalculationTerminal({
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, [displayedSteps]);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDragging) {
+        const newX = e.clientX - dragOffset.x;
+        const newY = e.clientY - dragOffset.y;
+        setPosition({
+          x: Math.max(0, Math.min(newX, window.innerWidth - 300)),
+          y: Math.max(0, Math.min(newY, window.innerHeight - 100))
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    const handleTouchMove = (e) => {
+      if (isDragging && e.touches.length === 1) {
+        const touch = e.touches[0];
+        const newX = touch.clientX - dragOffset.x;
+        const newY = touch.clientY - dragOffset.y;
+        setPosition({
+          x: Math.max(0, Math.min(newX, window.innerWidth - 300)),
+          y: Math.max(0, Math.min(newY, window.innerHeight - 100))
+        });
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, dragOffset]);
+
+  const handleDragStart = (e) => {
+    e.preventDefault();
+    const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+    const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
+    
+    setIsDragging(true);
+    setDragOffset({
+      x: clientX - position.x,
+      y: clientY - position.y
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -58,6 +135,7 @@ export default function CalculationTerminal({
   };
 
   const renderStep = (step, index) => {
+    if (!step) return null;
     if (step.type === 'divider') {
       return <div key={index} className="step-divider">{'─'.repeat(50)}</div>;
     }
@@ -70,17 +148,35 @@ export default function CalculationTerminal({
   };
 
   return (
-    <div className="calculation-terminal-overlay">
-      <div className="connector-line" />
+    <div 
+      className="calculation-terminal-overlay"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        transform: 'none'
+      }}
+    >
       <div className="calculation-terminal" ref={terminalRef}>
-        <div className="terminal-header">
+        <div 
+          className={`terminal-header ${isDragging ? 'dragging' : ''}`}
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+        >
           <div className="terminal-dots">
             <span className="dot red" />
             <span className="dot yellow" />
             <span className="dot green" />
           </div>
           <span className="terminal-title mono">AIRFOIL_ANALYSIS.exe</span>
-          <button className="terminal-close" onClick={onClose}>×</button>
+          <span className="drag-hint">⋮⋮</span>
+          <button 
+            className="terminal-close" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >×</button>
         </div>
         
         <div className="terminal-content" ref={contentRef}>
