@@ -5,9 +5,12 @@
   flex-direction: column;
   align-items: center;
   padding: 20px;
+  padding-bottom: 40px;
   gap: 20px;
   background: var(--carbon-black);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .no-profile-message {
