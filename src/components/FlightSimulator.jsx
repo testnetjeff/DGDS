@@ -19,8 +19,11 @@ export default function FlightSimulator({ controlPoints, setStatusMessage }) {
       setFlightPath(path);
       setCurrentFrame(0);
       setIsPlaying(false);
+      if (setStatusMessage) {
+        setStatusMessage("Flight numbers calculated. Ready to throw.");
+      }
     }
-  }, [controlPoints]);
+  }, [controlPoints, setStatusMessage]);
 
   const drawTopDownView = useCallback(() => {
     const canvas = topDownCanvasRef.current;

@@ -29,27 +29,35 @@ function roundToQuarter(value) {
 function analyzeProfile(anchors, controls) {
   const allPoints = [...anchors, ...controls];
   
+  if (allPoints.length === 0) {
+    return {
+      width: 0, height: 0, rimDepth: 0.5, domeHeight: 0.5,
+      edgeSharpness: 0.5, profileSmoothness: 0.5, overallArea: 0.5,
+      asymmetry: 0, anchorCount: 0, controlCount: 0,
+      widthHeightRatio: 1, rimCurvature: 0.5, domeShape: 0.5
+    };
+  }
+  
   const minX = Math.min(...allPoints.map(p => p.x));
   const maxX = Math.max(...allPoints.map(p => p.x));
   const minY = Math.min(...allPoints.map(p => p.y));
   const maxY = Math.max(...allPoints.map(p => p.y));
   
-  const width = maxX - minX;
-  const height = maxY - minY;
+  const width = Math.max(maxX - minX, 1);
+  const height = Math.max(maxY - minY, 1);
   
-  const sortedByX = [...anchors].sort((a, b) => a.x - b.x);
-  const leftmostAnchor = sortedByX[0];
-  const rightmostAnchor = sortedByX[sortedByX.length - 1];
+  const rimPoints = anchors.filter(p => p.x > maxX - width * 0.35);
+  const domePoints = anchors.filter(p => p.x < maxX - width * 0.35);
   
-  const rimPoints = anchors.filter(p => p.x > maxX - width * 0.3);
-  const domePoints = anchors.filter(p => p.x < maxX - width * 0.3);
-  
-  const rimDepth = calculateRimDepth(rimPoints, minY, maxY);
-  const domeHeight = calculateDomeHeight(domePoints, minY, height);
-  const edgeSharpness = calculateEdgeSharpness(controls, anchors, width);
-  const profileSmoothness = calculateSmoothness(controls, width);
-  const overallArea = estimateArea(anchors) / (width * height + 1);
+  const rimDepth = calculateRimDepthRaw(rimPoints, height);
+  const domeHeight = calculateDomeHeightRaw(domePoints, height);
+  const edgeSharpness = calculateEdgeSharpnessRaw(controls, anchors);
+  const profileSmoothness = calculateSmoothnessRaw(anchors);
+  const overallArea = estimateAreaNormalized(anchors, width, height);
   const asymmetry = calculateAsymmetry(anchors, (minY + maxY) / 2);
+  const widthHeightRatio = width / height;
+  const rimCurvature = calculateRimCurvature(rimPoints, controls.filter(c => c.x > maxX - width * 0.35));
+  const domeShape = calculateDomeShape(domePoints);
   
   return {
     width,
@@ -60,68 +68,96 @@ function analyzeProfile(anchors, controls) {
     profileSmoothness,
     overallArea,
     asymmetry,
+    widthHeightRatio,
+    rimCurvature,
+    domeShape,
     anchorCount: anchors.length,
     controlCount: controls.length
   };
 }
 
-function calculateRimDepth(rimPoints, minY, maxY) {
+function calculateRimDepthRaw(rimPoints, totalHeight) {
   if (rimPoints.length < 2) return 0.5;
-  
   const rimYs = rimPoints.map(p => p.y);
   const rimRange = Math.max(...rimYs) - Math.min(...rimYs);
-  const totalRange = maxY - minY;
-  
-  return totalRange > 0 ? rimRange / totalRange : 0.5;
+  return Math.min(rimRange / totalHeight, 1);
 }
 
-function calculateDomeHeight(domePoints, minY, totalHeight) {
+function calculateDomeHeightRaw(domePoints, totalHeight) {
   if (domePoints.length < 1) return 0.5;
-  
-  const topY = Math.min(...domePoints.map(p => p.y));
-  const bottomY = Math.max(...domePoints.map(p => p.y));
-  const rawHeight = Math.abs(bottomY - topY);
-  
-  return totalHeight > 0 ? rawHeight / totalHeight : 0.5;
+  const domeYs = domePoints.map(p => p.y);
+  const domeRange = Math.max(...domeYs) - Math.min(...domeYs);
+  return Math.min(domeRange / totalHeight, 1);
 }
 
-function calculateEdgeSharpness(controls, anchors, profileWidth) {
-  if (controls.length < 2 || profileWidth <= 0) return 0.5;
-  
-  let totalDeviation = 0;
+function calculateEdgeSharpnessRaw(controls, anchors) {
+  if (controls.length < 2 || anchors.length < 2) return 0.5;
+  let totalAngle = 0;
   let count = 0;
   
-  for (let i = 0; i < anchors.length && i < controls.length; i++) {
+  for (let i = 0; i < anchors.length; i++) {
     const anchor = anchors[i];
-    const control = controls[i];
-    if (anchor && control) {
-      const dist = Math.sqrt(
-        Math.pow(anchor.x - control.x, 2) + 
-        Math.pow(anchor.y - control.y, 2)
-      );
-      totalDeviation += dist / profileWidth;
-      count++;
+    const nearbyControls = controls.filter(c => 
+      Math.abs(c.x - anchor.x) < 30 && Math.abs(c.y - anchor.y) < 30
+    );
+    for (const ctrl of nearbyControls) {
+      const dx = ctrl.x - anchor.x;
+      const dy = ctrl.y - anchor.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist > 1) {
+        totalAngle += Math.abs(Math.atan2(dy, dx));
+        count++;
+      }
     }
   }
-  
-  return count > 0 ? totalDeviation / count : 0.5;
+  return count > 0 ? Math.min(totalAngle / count / Math.PI, 1) : 0.5;
 }
 
-function calculateSmoothness(controls, profileWidth) {
-  if (controls.length < 2 || profileWidth <= 0) return 1;
+function calculateSmoothnessRaw(anchors) {
+  if (anchors.length < 3) return 0.5;
+  let totalCurvature = 0;
+  const sorted = [...anchors].sort((a, b) => a.x - b.x);
   
-  let totalVariation = 0;
-  for (let i = 1; i < controls.length; i++) {
-    const prev = controls[i - 1];
-    const curr = controls[i];
-    const dist = Math.sqrt(
-      Math.pow(curr.x - prev.x, 2) + 
-      Math.pow(curr.y - prev.y, 2)
-    );
-    totalVariation += dist / profileWidth;
+  for (let i = 1; i < sorted.length - 1; i++) {
+    const prev = sorted[i-1];
+    const curr = sorted[i];
+    const next = sorted[i+1];
+    const angle1 = Math.atan2(curr.y - prev.y, curr.x - prev.x);
+    const angle2 = Math.atan2(next.y - curr.y, next.x - curr.x);
+    totalCurvature += Math.abs(angle2 - angle1);
   }
-  
-  return totalVariation / controls.length;
+  return Math.min(totalCurvature / (sorted.length - 2) / Math.PI, 1);
+}
+
+function estimateAreaNormalized(anchors, width, height) {
+  const area = estimateArea(anchors);
+  const maxArea = width * height;
+  return maxArea > 0 ? Math.min(area / maxArea, 1) : 0.5;
+}
+
+function calculateRimCurvature(rimAnchors, rimControls) {
+  if (rimAnchors.length < 2) return 0.5;
+  let curvature = 0;
+  for (const anchor of rimAnchors) {
+    for (const ctrl of rimControls) {
+      const dist = Math.sqrt(Math.pow(anchor.x - ctrl.x, 2) + Math.pow(anchor.y - ctrl.y, 2));
+      curvature += dist;
+    }
+  }
+  return Math.min(curvature / (rimAnchors.length * 50 + 1), 1);
+}
+
+function calculateDomeShape(domePoints) {
+  if (domePoints.length < 2) return 0.5;
+  const sorted = [...domePoints].sort((a, b) => a.x - b.x);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const midY = (first.y + last.y) / 2;
+  let deviation = 0;
+  for (const p of sorted) {
+    deviation += Math.abs(p.y - midY);
+  }
+  return Math.min(deviation / (sorted.length * 20 + 1), 1);
 }
 
 function estimateArea(anchors) {
@@ -149,73 +185,73 @@ function calculateAsymmetry(anchors, centerY) {
 }
 
 function calculateSpeed(metrics) {
-  const baseSpeed = 7;
+  const baseSpeed = 6;
   
-  const areaFactor = Math.min(metrics.overallArea * 8, 3);
-  const smoothnessFactor = Math.min(metrics.profileSmoothness * 5, 2);
-  const heightRatio = Math.min(metrics.height / Math.max(metrics.width, 1), 1);
+  const widthFactor = Math.min(metrics.widthHeightRatio * 0.8, 4);
+  const areaFactor = metrics.overallArea * 3;
+  const smoothnessFactor = (1 - metrics.profileSmoothness) * 2;
   
   let speed = baseSpeed + 
+    widthFactor + 
     areaFactor + 
-    smoothnessFactor - 
-    heightRatio * 2;
+    smoothnessFactor;
   
-  speed += (metrics.anchorCount * 0.18);
-  speed += (metrics.controlCount * 0.11);
+  speed += metrics.rimCurvature * 1.5;
+  speed -= metrics.domeShape * 0.8;
   
   return Math.max(1, Math.min(14.75, speed));
 }
 
 function calculateGlide(metrics) {
-  const baseGlide = 3.5;
+  const baseGlide = 3;
   
-  const domeFactor = Math.min(metrics.domeHeight * 4, 2);
-  const smoothnessFactor = Math.min(metrics.profileSmoothness * 3, 1.5);
-  const sharpnessReduction = Math.min(metrics.edgeSharpness * 2, 1);
+  const domeFactor = metrics.domeHeight * 3;
+  const smoothnessFactor = (1 - metrics.profileSmoothness) * 2;
+  const areaFactor = metrics.overallArea * 1.5;
   
   let glide = baseGlide + 
     domeFactor + 
-    smoothnessFactor - 
-    sharpnessReduction;
+    smoothnessFactor + 
+    areaFactor;
   
-  glide += (metrics.anchorCount * 0.13);
-  glide -= metrics.rimDepth * 0.5;
+  glide -= metrics.rimDepth * 1.5;
+  glide += metrics.domeShape * 1.2;
   
   return Math.max(1, Math.min(7, glide));
 }
 
 function calculateTurn(metrics) {
-  const baseTurn = -0.5;
+  const baseTurn = 0;
   
-  const rimFactor = metrics.rimDepth * 4;
-  const asymmetryFactor = metrics.asymmetry * 3;
-  const sharpnessFactor = metrics.edgeSharpness * 1.5;
+  const rimFactor = metrics.rimDepth * 3;
+  const curvatureFactor = metrics.rimCurvature * 2;
+  const asymmetryFactor = metrics.asymmetry * 4;
   
   let turn = baseTurn - 
-    rimFactor + 
-    asymmetryFactor - 
-    sharpnessFactor;
+    rimFactor - 
+    curvatureFactor + 
+    asymmetryFactor;
   
-  turn += (metrics.anchorCount * 0.12);
-  turn -= metrics.domeHeight * 0.8;
+  turn -= metrics.edgeSharpness * 2;
+  turn += metrics.domeShape * 0.5;
   
   return Math.max(-5, Math.min(1, turn));
 }
 
 function calculateFade(metrics) {
-  const baseFade = 1.5;
+  const baseFade = 1;
   
-  const rimFactor = metrics.rimDepth * 5;
-  const sharpnessFactor = metrics.edgeSharpness * 1.2;
-  const domeFactor = metrics.domeHeight * 0.8;
+  const rimFactor = metrics.rimDepth * 3;
+  const curvatureFactor = metrics.rimCurvature * 2;
+  const sharpnessFactor = metrics.edgeSharpness * 2;
   
   let fade = baseFade + 
     rimFactor + 
-    sharpnessFactor - 
-    domeFactor;
+    curvatureFactor + 
+    sharpnessFactor;
   
-  fade += (metrics.anchorCount * 0.14);
-  fade += (metrics.controlCount * 0.07);
+  fade -= metrics.domeHeight * 1.5;
+  fade -= metrics.asymmetry * 0.5;
   
   return Math.max(0, Math.min(5, fade));
 }
