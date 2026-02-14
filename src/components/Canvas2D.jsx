@@ -4,7 +4,7 @@ import { constrainPoint } from '../utils/pdgaConstraints';
 
 const SCALE = 3;
 
-export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage, panOffset, setPanOffset, zoom, setZoom }) {
+export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, editMode, setStatusMessage, panOffset, setPanOffset, zoom, setZoom, onDragStart, onDragEnd }) {
   const canvasRef = useRef(null);
   const [dragging, setDragging] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -16,6 +16,7 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     lastTouchCenter: null,
     activeTouches: 0
   });
+  const dragEndFiredRef = useRef(false);
 
   const offsetX = canvasSize.width / 2 + panOffset.x;
   const offsetY = canvasSize.height / 2 + panOffset.y;
@@ -325,7 +326,9 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     }
     
     if (editMode === 'select' && pointIndex !== null) {
+      dragEndFiredRef.current = false;
       setDragging(pointIndex);
+      onDragStart?.(controlPoints);
     }
   };
 
@@ -361,11 +364,19 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
   };
 
   const handleMouseUp = () => {
+    if (dragging !== null && !dragEndFiredRef.current) {
+      dragEndFiredRef.current = true;
+      onDragEnd?.();
+    }
     setDragging(null);
     setIsPanning(false);
   };
 
   const handleMouseLeave = () => {
+    if (dragging !== null && !dragEndFiredRef.current) {
+      dragEndFiredRef.current = true;
+      onDragEnd?.();
+    }
     setDragging(null);
     setHoveredPoint(null);
     setIsPanning(false);
@@ -457,8 +468,10 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       }
       
       if (editMode === 'select' && pointIndex !== null) {
+        dragEndFiredRef.current = false;
         setDragging(pointIndex);
         setHoveredPoint(pointIndex);
+        onDragStart?.(controlPoints);
       }
     }
   };
@@ -513,6 +526,10 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
   const handleTouchEnd = (e) => {
     e.preventDefault();
     if (e.touches.length === 0) {
+      if (dragging !== null && !dragEndFiredRef.current) {
+        dragEndFiredRef.current = true;
+        onDragEnd?.();
+      }
       setDragging(null);
       setHoveredPoint(null);
       setIsPanning(false);

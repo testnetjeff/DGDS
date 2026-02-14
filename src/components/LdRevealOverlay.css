@@ -1,0 +1,20 @@
+.ld-reveal-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1001;
+  pointer-events: none;
+}
+
+.ld-reveal-svg {
+  display: block;
+}
+
+.ld-reveal-path {
+  stroke: var(--sentient-steel-blue);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: none;
+}

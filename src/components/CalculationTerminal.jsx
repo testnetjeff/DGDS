@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './CalculationTerminal.css';
+import { getLdInterpretation } from '../utils/ldInterpretation';
 
 export default function CalculationTerminal({ 
   isOpen, 
   onClose, 
   calculationSteps,
   finalResult,
-  buttonRef
+  buttonRef,
+  variant = 'cl',
+  positionSlot,
+  onAnimationComplete
 }) {
   const [displayedSteps, setDisplayedSteps] = useState([]);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -15,19 +19,25 @@ export default function CalculationTerminal({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const terminalRef = useRef(null);
   const contentRef = useRef(null);
+  const onAnimationCompleteRef = useRef(onAnimationComplete);
+  onAnimationCompleteRef.current = onAnimationComplete;
 
   useEffect(() => {
     if (isOpen) {
       const windowWidth = window.innerWidth;
-      setPosition({ 
-        x: Math.max(10, (windowWidth - 600) / 2), 
-        y: 80 
-      });
+      const y = 80;
+      if (positionSlot === 0) {
+        setPosition({ x: 10, y });
+      } else if (positionSlot === 2) {
+        setPosition({ x: Math.max(10, windowWidth - 610), y });
+      } else {
+        setPosition({ x: Math.max(10, (windowWidth - 600) / 2), y });
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, positionSlot]);
 
   useEffect(() => {
-    if (isOpen && calculationSteps && calculationSteps.length > 0) {
+    if (isOpen && calculationSteps && calculationSteps.length > 0 && variant !== 'ld') {
       setDisplayedSteps([]);
       setIsCalculating(true);
       
@@ -44,12 +54,15 @@ export default function CalculationTerminal({
         } else {
           clearInterval(interval);
           setIsCalculating(false);
+          if (variant !== 'ld') {
+            onAnimationCompleteRef.current?.();
+          }
         }
       }, 80);
       
       return () => clearInterval(interval);
     }
-  }, [isOpen, calculationSteps]);
+  }, [isOpen, calculationSteps, variant]);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -167,7 +180,9 @@ export default function CalculationTerminal({
             <span className="dot yellow" />
             <span className="dot green" />
           </div>
-          <span className="terminal-title mono">AIRFOIL_ANALYSIS.exe</span>
+          <span className="terminal-title mono">
+            {variant === 'cd' ? 'DRAG_ANALYSIS.exe' : variant === 'ld' ? 'L/D_RATIO.exe' : 'AIRFOIL_ANALYSIS.exe'}
+          </span>
           <span className="drag-hint">⋮⋮</span>
           <button 
             className="terminal-close" 
@@ -180,11 +195,13 @@ export default function CalculationTerminal({
         </div>
         
         <div className="terminal-content" ref={contentRef}>
-          <div className="terminal-intro">
-            <span className="prompt">$</span> ./calculate_lift_coefficient --profile=current
-          </div>
+          {variant !== 'ld' && (
+            <div className="terminal-intro">
+              <span className="prompt">$</span> {variant === 'cd' ? './calculate_drag_coefficient --profile=current' : './calculate_lift_coefficient --profile=current'}
+            </div>
+          )}
           
-          {displayedSteps.map((step, index) => renderStep(step, index))}
+          {variant !== 'ld' && displayedSteps.map((step, index) => renderStep(step, index))}
           
           {isCalculating && (
             <div className="terminal-cursor">
@@ -192,7 +209,7 @@ export default function CalculationTerminal({
             </div>
           )}
           
-          {!isCalculating && finalResult && (
+          {!isCalculating && finalResult && variant === 'cl' && (
             <div className="terminal-summary">
               <div className="summary-box">
                 <div className="summary-title">COMPUTED LIFT COEFFICIENT</div>
@@ -205,13 +222,58 @@ export default function CalculationTerminal({
               </div>
             </div>
           )}
+          
+          {!isCalculating && finalResult && variant === 'cd' && (
+            <div className="terminal-summary">
+              <div className="summary-box">
+                <div className="summary-title">COMPUTED DRAG COEFFICIENT</div>
+                <div className="summary-value">{finalResult.cd?.toFixed(4) ?? 'N/A'}</div>
+                <div className="summary-details">
+                  <div>Re: {(finalResult.re ?? 0).toFixed(0)}</div>
+                  <div>Thickness (t/c): {((finalResult.thicknessRatio ?? 0) * 100).toFixed(2)}%</div>
+                  <div>Cd_friction: {(finalResult.cdFriction ?? 0).toFixed(4)}</div>
+                  <div>Cd_form: {(finalResult.cdForm ?? 0).toFixed(4)}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {variant === 'ld' && finalResult && (
+            <div className="terminal-summary ld-reveal">
+              <div className="summary-box">
+                <div className="summary-title">LIFT-TO-DRAG RATIO</div>
+                <div className="summary-value ld-reveal-value">
+                  {finalResult.ld != null && finalResult.ld !== Infinity && !Number.isNaN(finalResult.ld)
+                    ? finalResult.ld.toFixed(4)
+                    : 'N/A'}
+                </div>
+                <div className="summary-details">
+                  <div>Cₗ: {finalResult.cl != null && !finalResult.error ? finalResult.cl.toFixed(4) : 'N/A'}</div>
+                  <div>Cd: {finalResult.cd != null && !finalResult.error ? finalResult.cd.toFixed(4) : 'N/A'}</div>
+                  <div>L/D = Cₗ / Cd</div>
+                </div>
+                {(() => {
+                  const { message, hint } = getLdInterpretation(finalResult.ld);
+                  if (!message) return null;
+                  return (
+                    <div className="ld-interpretation">
+                      <p className="ld-interpretation-message">{message}</p>
+                      {hint && <p className="ld-interpretation-hint">{hint}</p>}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="terminal-footer">
           <span className="status-indicator">
-            {isCalculating ? '● PROCESSING' : '○ COMPLETE'}
+            {variant === 'ld' ? '○ COMPLETE' : isCalculating ? '● PROCESSING' : '○ COMPLETE'}
           </span>
-          <span className="mono">THIN AIRFOIL THEORY v1.0</span>
+          <span className="mono">
+            {variant === 'cd' ? 'APPROX. DRAG v1.0' : variant === 'ld' ? 'L/D RATIO v1.0' : 'THIN AIRFOIL THEORY v1.0'}
+          </span>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Toolbar.css';
+import { nacaToControlPoints } from '../utils/naca';
 
 export default function Toolbar({ 
   pdgaMode, 
@@ -17,11 +18,32 @@ export default function Toolbar({
   onReset,
   onCopyProfile,
   onResetView,
+  onSaveDesign,
+  onLoadDesign,
   designName,
   setDesignName,
   onCalculateCl,
-  isCalculatingCl
+  isCalculatingCl,
+  onCalculateCd,
+  isCalculatingCd,
+  onCalculateLd,
+  isCalculatingLd,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  onApplyNaca
 }) {
+  const [nacaInput, setNacaInput] = useState('');
+
+  const handleNacaApply = () => {
+    const result = nacaToControlPoints(nacaInput.trim());
+    onApplyNaca(result);
+  };
+
+  const handleNacaKeyDown = (e) => {
+    if (e.key === 'Enter') handleNacaApply();
+  };
   return (
     <div className="toolbar">
       <div className="toolbar-section">
@@ -44,6 +66,33 @@ export default function Toolbar({
           placeholder="Enter design name"
           maxLength={50}
         />
+      </div>
+
+      <div className="toolbar-section">
+        <button 
+          className="action-btn save-load"
+          onClick={onSaveDesign}
+          title="Save design to file"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          <span>SAVE</span>
+        </button>
+        <button 
+          className="action-btn save-load"
+          onClick={onLoadDesign}
+          title="Load design from file"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>LOAD</span>
+        </button>
       </div>
       
       <div className="toolbar-tabs">
@@ -106,6 +155,28 @@ export default function Toolbar({
             </button>
           </div>
           <button 
+            className="tool-btn"
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 7v6h6"/>
+              <path d="M3 13a9 9 0 1 0 3-7.7L3 13"/>
+            </svg>
+          </button>
+          <button 
+            className="tool-btn"
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 7v6h-6"/>
+              <path d="M21 13a9 9 0 1 1-3-7.7L21 13"/>
+            </svg>
+          </button>
+          <button 
             className="tool-btn reset"
             onClick={onReset}
             title="Reset to default profile"
@@ -141,6 +212,30 @@ export default function Toolbar({
           </button>
         </div>
       )}
+
+      {activeTab === '2d' && (
+        <div className="toolbar-section naca-section">
+          <span className="label mono">NACA:</span>
+          <input
+            type="text"
+            className="naca-input mono"
+            value={nacaInput}
+            onChange={(e) => setNacaInput(e.target.value)}
+            onKeyDown={handleNacaKeyDown}
+            placeholder="e.g. 0012, 2412, 23012"
+            maxLength={12}
+            title="4- or 5-digit NACA code (e.g. 0012, 2412, 23012). Reflex 5-digit not supported."
+          />
+          <button
+            type="button"
+            className="action-btn naca-apply"
+            onClick={handleNacaApply}
+            title="Generate airfoil from NACA code"
+          >
+            APPLY
+          </button>
+        </div>
+      )}
       
       <div className="toolbar-section">
         <label className="checkbox-label">
@@ -166,6 +261,23 @@ export default function Toolbar({
             <path d="M2 12l10 5 10-5"/>
           </svg>
           <span>CALC Cₗ</span>
+        </button>
+        <button 
+          className={`action-btn calculate-cd ${isCalculatingCd ? 'active' : ''}`}
+          onClick={onCalculateCd}
+          title="Approximate drag coefficient (smooth surface, typical Re)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+          <span>CALC Cd</span>
+        </button>
+        <button 
+          className={`action-btn calculate-ld ${isCalculatingLd ? 'active' : ''}`}
+          onClick={onCalculateLd}
+          title="Compute Cₗ and Cd, then display lift-to-drag ratio"
+        >
+          <span>CALC L/D</span>
         </button>
       </div>
       

@@ -71,17 +71,17 @@ export function calculateLiftCoefficient(controlPoints, angleOfAttack = 0) {
     const camberY = (topSurface[i].y + bottomSurface[i].y) / 2;
     camberLine.push({ x, y: camberY });
   }
+  camberLine.reverse();
   
   steps.push({ type: 'code', text: `camberLine[i] = { x, y: (z_top + z_bottom) / 2 }` });
   steps.push({ type: 'result', text: `  → Generated ${camberLine.length} camber line stations` });
   
   steps.push({ type: 'divider' });
   steps.push({ type: 'header', text: 'CAMBER LINE SLOPE INTEGRATION' });
-  steps.push({ type: 'info', text: 'Using coordinate transform: x = c/2(1 - cos θ)' });
-  steps.push({ type: 'formula', text: 'α₀ = -(1/π) ∫₀^π (dz/dx) dθ' });
+  steps.push({ type: 'info', text: 'Using Glauert transform: x/c = ½(1 - cos θ), θ ∈ [0,π]' });
+  steps.push({ type: 'formula', text: 'α₀ = (1/π) ∫₀^π (dz/dx)(1 - cos θ) dθ  (positive camber → α₀ < 0)' });
   
   let integralSum = 0;
-  const dTheta = Math.PI / camberLine.length;
   
   for (let i = 1; i < camberLine.length; i++) {
     const dx = camberLine[i].x - camberLine[i-1].x;
@@ -89,9 +89,14 @@ export function calculateLiftCoefficient(controlPoints, angleOfAttack = 0) {
     
     if (Math.abs(dx) > 0.001) {
       const dzdx = dz / dx;
-      const xNorm = (camberLine[i].x - minX) / chordLength;
-      const theta = Math.acos(1 - 2 * xNorm);
-      integralSum += dzdx * dTheta;
+      const xNormPrev = (maxX - camberLine[i - 1].x) / chordLength;
+      const xNormCurr = (maxX - camberLine[i].x) / chordLength;
+      const thetaPrev = Math.acos(Math.max(-1, Math.min(1, 1 - 2 * xNormPrev)));
+      const thetaCurr = Math.acos(Math.max(-1, Math.min(1, 1 - 2 * xNormCurr)));
+      const dTheta = thetaCurr - thetaPrev;
+      const thetaMid = (thetaPrev + thetaCurr) / 2;
+      const weight = 1 - Math.cos(thetaMid);
+      integralSum += dzdx * weight * dTheta;
     }
   }
   
@@ -100,9 +105,9 @@ export function calculateLiftCoefficient(controlPoints, angleOfAttack = 0) {
   steps.push({ type: 'code', text: `let integralSum = 0;` });
   steps.push({ type: 'code', text: `for (let i = 1; i < camberLine.length; i++) {` });
   steps.push({ type: 'code', text: `  const dzdx = (z[i] - z[i-1]) / (x[i] - x[i-1]);` });
-  steps.push({ type: 'code', text: `  integralSum += dzdx * dTheta;` });
+  steps.push({ type: 'code', text: `  const weight = 1 - cos(θ); integralSum += dzdx * weight * dθ;` });
   steps.push({ type: 'code', text: `}` });
-  steps.push({ type: 'code', text: `const alpha_0 = -integralSum / Math.PI;` });
+  steps.push({ type: 'code', text: `const alpha_0 = -integralSum / Math.PI;  // z positive up vs y positive down` });
   steps.push({ type: 'calc', text: `∫(dz/dx)dθ = ${integralSum.toFixed(6)}` });
   steps.push({ type: 'result', text: `  → α₀ = ${(alphaZeroLiftRad * 180 / Math.PI).toFixed(4)}°` });
   
@@ -133,6 +138,11 @@ export function calculateLiftCoefficient(controlPoints, angleOfAttack = 0) {
   steps.push({ type: 'result', text: `  → Max camber (h) = ${maxCamber.toFixed(4)}` });
   steps.push({ type: 'result', text: `  → Camber ratio (h/c) = ${(camberRatio * 100).toFixed(3)}%` });
   
+  let alphaZeroLiftRadFinal = alphaZeroLiftRad;
+  if (camberRatio > 0.01 && alphaZeroLiftRad > 0) {
+    alphaZeroLiftRadFinal = -alphaZeroLiftRad;
+  }
+  
   steps.push({ type: 'divider' });
   steps.push({ type: 'header', text: 'LIFT CURVE SLOPE' });
   steps.push({ type: 'info', text: 'For thin airfoil: dCₗ/dα = 2π per radian' });
@@ -151,11 +161,11 @@ export function calculateLiftCoefficient(controlPoints, angleOfAttack = 0) {
   steps.push({ type: 'header', text: 'LIFT COEFFICIENT COMPUTATION' });
   steps.push({ type: 'formula', text: 'Cₗ = a₀ × (α - α₀)' });
   
-  const cl = a0 * (alphaRad - alphaZeroLiftRad);
+  const cl = a0 * (alphaRad - alphaZeroLiftRadFinal);
   
   steps.push({ type: 'code', text: `const Cl = a0 * (alpha - alpha_0);` });
-  steps.push({ type: 'calc', text: `Cₗ = ${a0.toFixed(4)} × (${alphaRad.toFixed(4)} - (${alphaZeroLiftRad.toFixed(4)}))` });
-  steps.push({ type: 'calc', text: `Cₗ = ${a0.toFixed(4)} × ${(alphaRad - alphaZeroLiftRad).toFixed(4)}` });
+  steps.push({ type: 'calc', text: `Cₗ = ${a0.toFixed(4)} × (${alphaRad.toFixed(4)} - (${alphaZeroLiftRadFinal.toFixed(4)}))` });
+  steps.push({ type: 'calc', text: `Cₗ = ${a0.toFixed(4)} × ${(alphaRad - alphaZeroLiftRadFinal).toFixed(4)}` });
   
   steps.push({ type: 'divider' });
   steps.push({ type: 'final', text: `LIFT COEFFICIENT (Cₗ) = ${cl.toFixed(4)}` });
@@ -180,7 +190,7 @@ export function calculateLiftCoefficient(controlPoints, angleOfAttack = 0) {
     camberRatio,
     maxCamberPosition,
     chordLength,
-    alphaZeroLift: alphaZeroLiftRad * 180 / Math.PI,
+    alphaZeroLift: alphaZeroLiftRadFinal * 180 / Math.PI,
     liftCurveSlope,
     centerOfPressure: xcp,
     thicknessRatio,
