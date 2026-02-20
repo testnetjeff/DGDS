@@ -1,14 +1,20 @@
 const PROJECT_VERSION = 1;
 
-export function serializeProject({ designName, controlPoints, pdgaMode, resolution, discColor }) {
-  return JSON.stringify({
+const VALID_DISC_TEMPLATES = ['putter', 'mid', 'driver'];
+
+export function serializeProject({ designName, controlPoints, pdgaMode, resolution, discColor, discTemplate }) {
+  const payload = {
     version: PROJECT_VERSION,
     designName: designName || 'Untitled Disc',
     controlPoints: controlPoints || [],
     pdgaMode: !!pdgaMode,
     resolution: resolution || 'medium',
     discColor: discColor || 'hsl(200, 100%, 50%)'
-  }, null, 2);
+  };
+  if (discTemplate && VALID_DISC_TEMPLATES.includes(discTemplate)) {
+    payload.discTemplate = discTemplate;
+  }
+  return JSON.stringify(payload, null, 2);
 }
 
 export function deserializeProject(jsonString) {
@@ -28,12 +34,14 @@ export function deserializeProject(jsonString) {
   if (anchors.length < 3) {
     return { error: 'At least 3 anchor points required' };
   }
+  const discTemplate = VALID_DISC_TEMPLATES.includes(data.discTemplate) ? data.discTemplate : 'mid';
   return {
     designName: typeof data.designName === 'string' ? data.designName : 'Untitled Disc',
     controlPoints: data.controlPoints,
     pdgaMode: !!data.pdgaMode,
     resolution: ['low', 'medium', 'high'].includes(data.resolution) ? data.resolution : 'medium',
-    discColor: typeof data.discColor === 'string' ? data.discColor : 'hsl(200, 100%, 50%)'
+    discColor: typeof data.discColor === 'string' ? data.discColor : 'hsl(200, 100%, 50%)',
+    discTemplate
   };
 }
 

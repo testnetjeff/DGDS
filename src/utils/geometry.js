@@ -1,5 +1,64 @@
 import * as THREE from 'three';
+import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { generateBezierPoints } from './bezier';
+
+const TEXT_SIZE = 12;
+const TEXT_DEPTH = 1.2;
+const TEXT_MAX_CHARS = 20;
+const TEXT_RAISE_OFFSET = 1.5;
+
+export function createTextGeometry(designName, font, options = {}) {
+  const name = (designName || '').trim();
+  if (!name || !font) return null;
+  const text = name.length > TEXT_MAX_CHARS ? name.slice(0, TEXT_MAX_CHARS) : name;
+  try {
+    const size = options.size ?? TEXT_SIZE;
+    const depth = options.depth ?? TEXT_DEPTH;
+    const curveSegments = options.curveSegments ?? 8;
+    const geo = new TextGeometry(text, {
+      font,
+      size,
+      depth,
+      curveSegments,
+      bevelEnabled: false,
+    });
+    geo.computeVertexNormals();
+    geo.computeBoundingBox();
+    const center = new THREE.Vector3();
+    geo.boundingBox.getCenter(center);
+    geo.translate(-center.x, -center.y, -center.z);
+    geo.rotateX(-Math.PI / 2);
+    if (!geo.index) {
+      const vertexCount = geo.attributes.position.count;
+      const indices = new Array(vertexCount);
+      for (let i = 0; i < vertexCount; i++) indices[i] = i;
+      geo.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
+    }
+    return geo;
+  } catch (e) {
+    console.warn('createTextGeometry failed:', e);
+    return null;
+  }
+}
+
+export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font) {
+  const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
+  const name = (designName || '').trim();
+  if (!font || !name) return latheGeometry;
+  const textGeometry = createTextGeometry(designName, font);
+  if (!textGeometry) return latheGeometry;
+  latheGeometry.computeBoundingBox();
+  const discTopY = latheGeometry.boundingBox.max.y;
+  textGeometry.translate(0, discTopY + TEXT_RAISE_OFFSET, 0);
+  const merged = mergeGeometries([latheGeometry, textGeometry]);
+  if (!merged) {
+    console.warn('mergeGeometries failed (text not added); disc only.');
+    return latheGeometry;
+  }
+  merged.computeVertexNormals();
+  return merged;
+}
 
 export function createLatheGeometry(controlPoints, segments = 64, resolution = 'medium', closed = true) {
   const resolutionMap = {

@@ -32,7 +32,9 @@ export default function Toolbar({
   onRedo,
   canUndo,
   canRedo,
-  onApplyNaca
+  onApplyNaca,
+  discTemplate,
+  onLoadTemplate
 }) {
   const [nacaInput, setNacaInput] = useState('');
 
@@ -210,6 +212,17 @@ export default function Toolbar({
               <line x1="18" y1="12" x2="22" y2="12"/>
             </svg>
           </button>
+          <span className="label mono">Template:</span>
+          <select
+            className="template-select mono"
+            value={discTemplate}
+            onChange={(e) => onLoadTemplate(e.target.value)}
+            title="Load disc type template"
+          >
+            <option value="putter">Putter</option>
+            <option value="mid">Mid-Range</option>
+            <option value="driver">Driver</option>
+          </select>
         </div>
       )}
 

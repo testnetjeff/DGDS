@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { generateBezierPoints, getReferenceDiscProfile, addAnchorPoint, deleteAnchorPoint, findNearestSegment, getAnchors } from '../utils/bezier';
 import { constrainPoint } from '../utils/pdgaConstraints';
+import './Canvas2D.css';
 
 const SCALE = 3;
 
@@ -17,7 +18,10 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     activeTouches: 0
   });
   const dragEndFiredRef = useRef(false);
-
+  const [selectedIndices, setSelectedIndices] = useState(() => new Set());
+  const [marqueeStart, setMarqueeStart] = useState(null);
+  const [marqueeEnd, setMarqueeEnd] = useState(null);
+  const selectionDragStateRef = useRef(null);
   const offsetX = canvasSize.width / 2 + panOffset.x;
   const offsetY = canvasSize.height / 2 + panOffset.y;
 
@@ -153,15 +157,16 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     controlPoints.forEach((point, index) => {
       const cp = toCanvas(point);
       const isHovered = hoveredPoint === index;
+      const isSelected = selectedIndices.has(index);
       const isAnchor = point.type === 'anchor';
       
       let fillColor;
       if (editMode === 'delete' && isAnchor && isHovered) {
         fillColor = '#FF4444';
       } else if (isAnchor) {
-        fillColor = isHovered ? '#FF8700' : '#8294A1';
+        fillColor = isHovered ? '#FF8700' : isSelected ? '#FF8700' : '#8294A1';
       } else {
-        fillColor = isHovered ? '#FF8700' : 'rgba(130, 148, 161, 0.6)';
+        fillColor = isHovered ? '#FF8700' : isSelected ? '#FF8700' : 'rgba(130, 148, 161, 0.6)';
       }
       
       ctx.fillStyle = fillColor;
@@ -175,6 +180,20 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       }
       ctx.fill();
       
+      if (isSelected && !isHovered) {
+        ctx.strokeStyle = '#FF8700';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        if (isAnchor) {
+          ctx.arc(cp.x, cp.y, 12, 0, Math.PI * 2);
+        } else {
+          ctx.rect(cp.x - 8, cp.y - 8, 16, 16);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      
       if (point.isConstrained) {
         ctx.strokeStyle = '#FF8700';
         ctx.lineWidth = 2;
@@ -184,24 +203,22 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       }
     });
     
+    if (marqueeStart !== null && marqueeEnd !== null) {
+      const minX = Math.min(marqueeStart.x, marqueeEnd.x);
+      const maxX = Math.max(marqueeStart.x, marqueeEnd.x);
+      const minY = Math.min(marqueeStart.y, marqueeEnd.y);
+      const maxY = Math.max(marqueeStart.y, marqueeEnd.y);
+      ctx.strokeStyle = 'rgba(130, 148, 161, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+      ctx.setLineDash([]);
+    }
+    
     const anchors = getAnchors(controlPoints);
     ctx.fillStyle = 'rgba(130, 148, 161, 0.5)';
     ctx.font = '11px JetBrains Mono';
     ctx.fillText(`Anchors: ${anchors.length}`, 20, 30);
-    
-    if (bezierPoints.length > 0) {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      bezierPoints.forEach(p => {
-        if (p.x < minX) minX = p.x;
-        if (p.x > maxX) maxX = p.x;
-        if (p.y < minY) minY = p.y;
-        if (p.y > maxY) maxY = p.y;
-      });
-      const widthMM = (maxX - minX).toFixed(1);
-      const heightMM = (maxY - minY).toFixed(1);
-      ctx.fillStyle = 'rgba(130, 148, 161, 0.7)';
-      ctx.fillText(`Width: ${widthMM} mm  |  Height: ${heightMM} mm`, 20, height - 20);
-    }
     
     if (editMode === 'add') {
       ctx.fillStyle = 'rgba(76, 175, 80, 0.7)';
@@ -214,7 +231,7 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     ctx.fillStyle = 'rgba(130, 148, 161, 0.5)';
     ctx.fillText(`Zoom: ${(zoom * 100).toFixed(0)}%`, width - 100, 30);
     
-  }, [controlPoints, hoveredPoint, pdgaMode, toCanvas, editMode, offsetX, offsetY, zoom]);
+  }, [controlPoints, hoveredPoint, selectedIndices, marqueeStart, marqueeEnd, pdgaMode, toCanvas, editMode, offsetX, offsetY, zoom]);
 
   useEffect(() => {
     draw();
@@ -279,6 +296,21 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
     return null;
   };
 
+  const getIndicesInRect = (x1, y1, x2, y2) => {
+    const minX = Math.min(x1, x2);
+    const maxX = Math.max(x1, x2);
+    const minY = Math.min(y1, y2);
+    const maxY = Math.max(y1, y2);
+    const indices = new Set();
+    controlPoints.forEach((point, i) => {
+      const cp = toCanvas(point);
+      if (cp.x >= minX && cp.x <= maxX && cp.y >= minY && cp.y <= maxY) {
+        indices.add(i);
+      }
+    });
+    return indices;
+  };
+
   const handleMouseDown = (e) => {
     const pos = getMousePos(e);
     
@@ -325,10 +357,26 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       return;
     }
     
-    if (editMode === 'select' && pointIndex !== null) {
-      dragEndFiredRef.current = false;
-      setDragging(pointIndex);
-      onDragStart?.(controlPoints);
+    if (editMode === 'select') {
+      if (pointIndex !== null) {
+        if (selectedIndices.has(pointIndex)) {
+          dragEndFiredRef.current = false;
+          selectionDragStateRef.current = {
+            startWorld: fromCanvas(pos.x, pos.y),
+            pointsSnapshot: controlPoints.map(p => ({ ...p }))
+          };
+          setDragging('selection');
+          onDragStart?.(controlPoints);
+        } else {
+          setSelectedIndices(new Set());
+          dragEndFiredRef.current = false;
+          setDragging(pointIndex);
+          onDragStart?.(controlPoints);
+        }
+      } else {
+        setMarqueeStart(pos);
+        setMarqueeEnd(pos);
+      }
     }
   };
 
@@ -343,7 +391,35 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
       return;
     }
     
-    if (dragging !== null && editMode === 'select') {
+    if (marqueeStart !== null) {
+      setMarqueeEnd(pos);
+      return;
+    }
+    
+    if (dragging === 'selection' && editMode === 'select') {
+      const state = selectionDragStateRef.current;
+      if (!state) return;
+      const delta = {
+        x: fromCanvas(pos.x, pos.y).x - state.startWorld.x,
+        y: fromCanvas(pos.x, pos.y).y - state.startWorld.y
+      };
+      setControlPoints((prev) => {
+        const newPoints = prev.map((p, i) => {
+          if (!selectedIndices.has(i)) return p;
+          const snap = state.pointsSnapshot[i];
+          const moved = { ...snap, x: snap.x + delta.x, y: snap.y + delta.y };
+          if (pdgaMode) {
+            const constrained = constrainPoint(moved, pdgaMode, prev);
+            return { ...moved, ...constrained };
+          }
+          return moved;
+        });
+        return newPoints;
+      });
+      return;
+    }
+    
+    if (typeof dragging === 'number' && dragging !== null && editMode === 'select') {
       const newPos = fromCanvas(pos.x, pos.y);
       const constrainedPos = constrainPoint(newPos, pdgaMode, controlPoints);
       
@@ -357,25 +433,48 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
         };
         return newPoints;
       });
-    } else {
-      const pointIndex = findPointAtPos(pos);
-      setHoveredPoint(pointIndex);
+      return;
     }
+    
+    const pointIndex = findPointAtPos(pos);
+    setHoveredPoint(pointIndex);
   };
 
   const handleMouseUp = () => {
+    if (marqueeStart !== null && marqueeEnd !== null) {
+      const dx = Math.abs(marqueeEnd.x - marqueeStart.x);
+      const dy = Math.abs(marqueeEnd.y - marqueeStart.y);
+      if (dx < 5 && dy < 5) {
+        setSelectedIndices(new Set());
+      } else {
+        const indices = getIndicesInRect(marqueeStart.x, marqueeStart.y, marqueeEnd.x, marqueeEnd.y);
+        setSelectedIndices(indices);
+      }
+      setMarqueeStart(null);
+      setMarqueeEnd(null);
+    }
     if (dragging !== null && !dragEndFiredRef.current) {
       dragEndFiredRef.current = true;
       onDragEnd?.();
+    }
+    if (dragging === 'selection') {
+      selectionDragStateRef.current = null;
     }
     setDragging(null);
     setIsPanning(false);
   };
 
   const handleMouseLeave = () => {
+    if (marqueeStart !== null) {
+      setMarqueeStart(null);
+      setMarqueeEnd(null);
+    }
     if (dragging !== null && !dragEndFiredRef.current) {
       dragEndFiredRef.current = true;
       onDragEnd?.();
+    }
+    if (dragging === 'selection') {
+      selectionDragStateRef.current = null;
     }
     setDragging(null);
     setHoveredPoint(null);
@@ -384,6 +483,8 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
 
   const getCursor = () => {
     if (isPanning) return 'grabbing';
+    if (marqueeStart !== null) return 'crosshair';
+    if (dragging === 'selection') return 'grabbing';
     if (editMode === 'add') return 'crosshair';
     if (editMode === 'delete') {
       if (hoveredPoint !== null && controlPoints[hoveredPoint]?.type === 'anchor') {
@@ -548,25 +649,27 @@ export default function Canvas2D({ controlPoints, setControlPoints, pdgaMode, ed
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        width: '100%',
-        height: '100%',
-        cursor: getCursor(),
-        touchAction: 'none'
-      }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseLeave}
-      onContextMenu={handleContextMenu}
-      onAuxClick={(e) => e.preventDefault()}
-      onWheel={handleWheel}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
-    />
+    <div className="canvas-2d-wrapper">
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          cursor: getCursor(),
+          touchAction: 'none'
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onContextMenu={handleContextMenu}
+        onAuxClick={(e) => e.preventDefault()}
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+      />
+    </div>
   );
 }

@@ -5,14 +5,18 @@ import Viewer3D from './components/Viewer3D';
 import Toolbar from './components/Toolbar';
 import ColorPicker from './components/ColorPicker';
 import Tutorial from './components/Tutorial';
+import TemplateHintOverlay from './components/TemplateHintOverlay';
 import CFDPlaceholder from './components/CFDPlaceholder';
 import FlightSimulator from './components/FlightSimulator';
 import CalculationTerminal from './components/CalculationTerminal';
+import DimensionsToolbar from './components/DimensionsToolbar';
 import LdRevealOverlay from './components/LdRevealOverlay';
 import StatusBar from './components/StatusBar';
 import { getDefaultDiscProfile } from './utils/bezier';
 import { validateProfile } from './utils/pdgaConstraints';
-import { createLatheGeometry, downloadSTL } from './utils/geometry';
+import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+import helvetikerBold from './assets/fonts/helvetiker_bold.typeface.json';
+import { createDiscGeometryWithText, downloadSTL } from './utils/geometry';
 import { calculateLiftCoefficient } from './utils/thinAirfoil';
 import { calculateDragCoefficient } from './utils/dragCoefficient';
 import { serializeProject, deserializeProject, downloadProject } from './utils/projectIO';
@@ -40,7 +44,9 @@ export default function App() {
   const [showTutorial, setShowTutorial] = useState(true);
   const [activeTab, setActiveTab] = useState('2d');
   const [pdgaMode, setPdgaMode] = useState(false);
-  const [controlPoints, setControlPoints] = useState(getDefaultDiscProfile());
+  const [discTemplate, setDiscTemplate] = useState('mid');
+  const [templateHintType, setTemplateHintType] = useState(null);
+  const [controlPoints, setControlPoints] = useState(() => getDefaultDiscProfile('mid'));
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [generatedPoints, setGeneratedPoints] = useState(null);
@@ -52,6 +58,7 @@ export default function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [designName, setDesignName] = useState('Untitled Disc');
+  const [font, setFont] = useState(null);
   const [showClTerminal, setShowClTerminal] = useState(false);
   const [clCalculationSteps, setClCalculationSteps] = useState([]);
   const [clResult, setClResult] = useState(null);
@@ -72,6 +79,15 @@ export default function App() {
     const storedTutorial = localStorage.getItem('dgds_tutorial_shown');
     if (storedTutorial === 'true') {
       setShowTutorial(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loader = new FontLoader();
+    try {
+      setFont(loader.parse(helvetikerBold));
+    } catch (err) {
+      console.error('Font parse failed:', err);
     }
   }, []);
 
@@ -102,7 +118,7 @@ export default function App() {
     if (!generatedPoints) return;
     
     try {
-      const geometry = createLatheGeometry(generatedPoints, 64, resolution, true);
+      const geometry = createDiscGeometryWithText(generatedPoints, 64, resolution, true, designName, font);
       const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'disc_design';
       downloadSTL(geometry, `${safeName}.stl`);
       setStatusMessage("STL export complete. Manufacturing readiness confirmed.");
@@ -110,7 +126,7 @@ export default function App() {
       console.error('Export error:', e);
       setStatusMessage("Export failed. Geometry recalculation required.");
     }
-  }, [generatedPoints, resolution, designName]);
+  }, [generatedPoints, resolution, designName, font]);
 
   const handlePdgaModeChange = (enabled) => {
     setPdgaMode(enabled);
@@ -205,11 +221,26 @@ export default function App() {
   }, []);
 
   const handleReset = useCallback(() => {
-    setControlPoints(getDefaultDiscProfile());
+    setControlPoints(getDefaultDiscProfile(discTemplate));
     setGeneratedPoints(null);
     setUndoStack([]);
     setRedoStack([]);
     setStatusMessage("Profile reset to default. Ready for design input.");
+  }, [discTemplate]);
+
+  const handleLoadTemplate = useCallback((type) => {
+    setControlPoints(getDefaultDiscProfile(type));
+    setDiscTemplate(type);
+    setTemplateHintType(type);
+    setGeneratedPoints(null);
+    setUndoStack([]);
+    setRedoStack([]);
+    const labels = { putter: 'Putter', mid: 'Mid-Range', driver: 'Driver' };
+    setStatusMessage(`Loaded ${labels[type]} template.`);
+  }, []);
+
+  const handleCloseTemplateHint = useCallback(() => {
+    setTemplateHintType(null);
   }, []);
 
   const handleApplyNaca = useCallback((result) => {
@@ -240,11 +271,11 @@ export default function App() {
   }, []);
 
   const handleSaveDesign = useCallback(() => {
-    const json = serializeProject({ designName, controlPoints, pdgaMode, resolution, discColor });
+    const json = serializeProject({ designName, controlPoints, pdgaMode, resolution, discColor, discTemplate });
     const safeName = (designName || 'design').replace(/[^a-zA-Z0-9_-]/g, '_') + '.dgds';
     downloadProject(json, safeName);
     setStatusMessage("Design state archived.");
-  }, [designName, controlPoints, pdgaMode, resolution, discColor]);
+  }, [designName, controlPoints, pdgaMode, resolution, discColor, discTemplate]);
 
   const handleLoadDesign = useCallback(() => {
     fileInputRef.current?.click();
@@ -266,6 +297,7 @@ export default function App() {
       setPdgaMode(result.pdgaMode);
       setResolution(result.resolution);
       setDiscColor(result.discColor);
+      if (result.discTemplate) setDiscTemplate(result.discTemplate);
       setGeneratedPoints(null);
       setUndoStack([]);
       setRedoStack([]);
@@ -373,6 +405,15 @@ export default function App() {
     setShowLdTerminal(true);
   }, []);
 
+  const syncLdIntervals = ldRevealPhase === 'waiting' && showClTerminal && showCdTerminal;
+  const clLen = clCalculationSteps?.length ?? 0;
+  const cdLen = cdCalculationSteps?.length ?? 0;
+  const baseStepMs = 35;
+  const maxSteps = Math.max(clLen, cdLen, 1);
+  const totalDurationMs = maxSteps * baseStepMs;
+  const clStepInterval = syncLdIntervals && clLen > 0 ? totalDurationMs / clLen : baseStepMs;
+  const cdStepInterval = syncLdIntervals && cdLen > 0 ? totalDurationMs / cdLen : baseStepMs;
+
   if (!appStarted) {
     return <LandingPage onEnter={handleAppStart} />;
   }
@@ -387,6 +428,12 @@ export default function App() {
         style={{ display: 'none' }}
       />
       {showTutorial && <Tutorial onClose={handleCloseTutorial} />}
+      {templateHintType && (
+        <TemplateHintOverlay
+          templateType={templateHintType}
+          onClose={handleCloseTemplateHint}
+        />
+      )}
       
       <Toolbar
         pdgaMode={pdgaMode}
@@ -419,6 +466,8 @@ export default function App() {
         canUndo={undoStack.length > 0}
         canRedo={redoStack.length > 0}
         onApplyNaca={handleApplyNaca}
+        discTemplate={discTemplate}
+        onLoadTemplate={handleLoadTemplate}
       />
 
       <CalculationTerminal
@@ -428,6 +477,7 @@ export default function App() {
         finalResult={clResult}
         positionSlot={ldRevealPhase !== null ? 0 : undefined}
         onAnimationComplete={ldRevealPhase === 'waiting' ? handleClAnimationComplete : undefined}
+        stepInterval={clStepInterval}
       />
 
       <CalculationTerminal
@@ -438,6 +488,7 @@ export default function App() {
         variant="cd"
         positionSlot={ldRevealPhase !== null ? 1 : undefined}
         onAnimationComplete={ldRevealPhase === 'waiting' ? handleCdAnimationComplete : undefined}
+        stepInterval={cdStepInterval}
       />
 
       {ldRevealPhase === 'drawing' && (
@@ -457,21 +508,27 @@ export default function App() {
 
       <main className="workspace">
         {activeTab === '2d' && (
-          <div className="canvas-container">
-            <Canvas2D
+          <>
+            <div className="canvas-container">
+              <Canvas2D
+                controlPoints={controlPoints}
+                setControlPoints={handlePointsChange}
+                pdgaMode={pdgaMode}
+                editMode={editMode}
+                setStatusMessage={setStatusMessage}
+                panOffset={panOffset}
+                setPanOffset={setPanOffset}
+                zoom={zoom}
+                setZoom={setZoom}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              />
+            </div>
+            <DimensionsToolbar
               controlPoints={controlPoints}
-              setControlPoints={handlePointsChange}
-              pdgaMode={pdgaMode}
-              editMode={editMode}
-              setStatusMessage={setStatusMessage}
-              panOffset={panOffset}
-              setPanOffset={setPanOffset}
-              zoom={zoom}
-              setZoom={setZoom}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
+              onControlPointsChange={handlePointsChange}
             />
-          </div>
+          </>
         )}
 
         {activeTab === '3d' && (
@@ -482,6 +539,8 @@ export default function App() {
                   controlPoints={generatedPoints}
                   color={discColor}
                   resolution={resolution}
+                  designName={designName}
+                  font={font}
                 />
                 <ColorPicker color={discColor} setColor={setDiscColor} />
               </>

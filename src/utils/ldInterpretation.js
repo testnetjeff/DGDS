@@ -1,10 +1,10 @@
 /**
- * Interprets L/D (lift-to-drag) ratio for disc golf: putter, midrange, or driver.
- * Thresholds are approximate and based on relative ordering (putters = lower L/D, drivers = higher L/D).
+ * Interprets L/D (lift-to-drag) ratio in aerodynamic terms only.
+ * Does not infer disc type (putter/mid/driver) — that is set by the user's template choice.
  */
 
-const PUTTER_THRESHOLD = 2.2;
-const DRIVER_THRESHOLD = 3.4;
+const LOW_LD_THRESHOLD = 2.2;
+const HIGH_LD_THRESHOLD = 3.4;
 
 /**
  * @param {number | null} ld - Lift-to-drag ratio
@@ -14,23 +14,23 @@ export function getLdInterpretation(ld) {
   if (ld == null || Number.isNaN(ld) || !Number.isFinite(ld) || ld === Infinity) {
     return { category: null, message: null, hint: null };
   }
-  if (ld < PUTTER_THRESHOLD) {
+  if (ld < LOW_LD_THRESHOLD) {
     return {
-      category: 'putter',
-      message: 'Based on this L/D, this design would most likely behave like a putter.',
-      hint: 'Putters favor control and shorter, predictable flights.'
+      category: 'low',
+      message: 'Relatively high drag for the lift produced — shorter, controlled flight potential.',
+      hint: 'Lower L/D means more drag per unit lift; good for accuracy and landing control.'
     };
   }
-  if (ld < DRIVER_THRESHOLD) {
+  if (ld < HIGH_LD_THRESHOLD) {
     return {
-      category: 'midrange',
-      message: 'Based on this L/D, this design would most likely behave like a midrange.',
-      hint: 'Midranges offer a balance of control and distance.'
+      category: 'moderate',
+      message: 'Moderate lift-to-drag — balanced efficiency.',
+      hint: 'L/D measures how much lift you get per unit of drag.'
     };
   }
   return {
-    category: 'driver',
-    message: 'Based on this L/D, this design would most likely behave like a driver.',
-    hint: 'Drivers are optimized for distance and longer flights.'
+    category: 'high',
+    message: 'High L/D — efficient lift per unit drag; potential for longer glide.',
+    hint: 'Higher L/D generally means more glide for a given drag penalty.'
   };
 }
