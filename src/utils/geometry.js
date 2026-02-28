@@ -8,6 +8,46 @@ const DEFAULT_TEXT_SIZE = 12;
 const DEFAULT_TEXT_DEPTH = 2;
 const TEXT_MAX_CHARS = 20;
 
+function buildRadialHeightMap(controlPoints, closed = true) {
+  const bezierPoints = generateBezierPoints(controlPoints, 80, closed);
+  const map = bezierPoints.map(p => ({
+    r: Math.max(0, p.x),
+    y: -p.y,
+  }));
+  map.sort((a, b) => a.r - b.r);
+  return map;
+}
+
+function getHeightAtRadius(r, heightMap) {
+  if (!heightMap || heightMap.length === 0) return 0;
+  if (r <= heightMap[0].r) return heightMap[0].y;
+  if (r >= heightMap[heightMap.length - 1].r) return heightMap[heightMap.length - 1].y;
+  for (let i = 0; i < heightMap.length - 1; i++) {
+    const a = heightMap[i];
+    const b = heightMap[i + 1];
+    if (r >= a.r && r <= b.r) {
+      const t = (r - a.r) / (b.r - a.r);
+      return a.y + t * (b.y - a.y);
+    }
+  }
+  return heightMap[heightMap.length - 1].y;
+}
+
+function conformTextToSurface(textGeometry, heightMap, discTopY) {
+  const pos = textGeometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const r = Math.sqrt(x * x + z * z);
+    const surfaceY = getHeightAtRadius(r, heightMap);
+    const offset = surfaceY - discTopY;
+    pos.setY(i, pos.getY(i) + offset);
+  }
+  pos.needsUpdate = true;
+  textGeometry.computeVertexNormals();
+  textGeometry.computeBoundingBox();
+}
+
 export function createTextGeometry(designName, font, options = {}) {
   const name = (designName || '').trim();
   if (!name || !font) return null;
@@ -42,20 +82,6 @@ export function createTextGeometry(designName, font, options = {}) {
   }
 }
 
-export function positionTextOnDisc(textGeometry, latheGeometry) {
-  latheGeometry.computeBoundingBox();
-  const discTopY = latheGeometry.boundingBox.max.y;
-
-  textGeometry.computeBoundingBox();
-  const textMinY = textGeometry.boundingBox.min.y;
-  const textMaxY = textGeometry.boundingBox.max.y;
-  const textHeight = textMaxY - textMinY;
-
-  const embedDepth = textHeight * 0.4;
-  textGeometry.translate(0, discTopY - textMinY - embedDepth, 0);
-  return textGeometry;
-}
-
 export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font, textOptions = {}) {
   const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
   const name = (designName || '').trim();
@@ -71,7 +97,19 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
     return { disc: latheGeometry, text: null, combined: latheGeometry };
   }
 
-  positionTextOnDisc(textGeometry, latheGeometry);
+  latheGeometry.computeBoundingBox();
+  const discTopY = latheGeometry.boundingBox.max.y;
+
+  textGeometry.computeBoundingBox();
+  const textMinY = textGeometry.boundingBox.min.y;
+  const textMaxY = textGeometry.boundingBox.max.y;
+  const textHeight = textMaxY - textMinY;
+  const embedDepth = textHeight * 0.4;
+
+  textGeometry.translate(0, discTopY - textMinY - embedDepth, 0);
+
+  const heightMap = buildRadialHeightMap(controlPoints, closed);
+  conformTextToSurface(textGeometry, heightMap, discTopY);
 
   let combined = latheGeometry;
   try {
@@ -86,8 +124,9 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
 
     combined = resultBrush.geometry;
     combined.computeVertexNormals();
+    console.log('[CSG] Union succeeded, vertices:', combined.attributes.position.count);
   } catch (e) {
-    console.warn('CSG union failed, falling back to simple merge:', e);
+    console.warn('[CSG] Union failed, using merge fallback:', e);
     const merged = mergeGeometries([latheGeometry, textGeometry]);
     if (merged) {
       merged.computeVertexNormals();

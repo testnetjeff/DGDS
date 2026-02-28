@@ -135,10 +135,13 @@ The application runs on port 5000.
   - Default text depth increased from 1.2 to 2 for better readability in slicers
 - 2026-02-28: Replaced text integration with CSG boolean union
   - Uses three-bvh-csg library for proper Constructive Solid Geometry operations
-  - Text is generated as a clean flat extrusion (no vertex warping)
+  - Text is generated as a clean flat extrusion
+  - Text vertices conformed to disc surface via radial height map (buildRadialHeightMap + conformTextToSurface)
+  - Each text vertex Y is offset by the disc's surface height at that radial distance, so text follows the dome
   - Positioned to overlap the disc surface (40% embedded, 60% protruding)
-  - CSG ADDITION (union) merges text and disc into one watertight solid
-  - Produces clean geometry for slicer software without jagged edges
+  - CSG ADDITION (union) merges conformed text and disc into one watertight solid (~61k vertices)
+  - Viewer renders disc and text as separate meshes for visual contrast (text gets brighter material)
+  - STL export uses the CSG-combined geometry for a proper single-body solid
   - Falls back to simple merge if CSG fails
 
 ## Mobile/Touch Support
