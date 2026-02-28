@@ -1,52 +1,11 @@
 import * as THREE from 'three';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { Brush, Evaluator, ADDITION } from 'three-bvh-csg';
 import { generateBezierPoints } from './bezier';
 
 const DEFAULT_TEXT_SIZE = 12;
 const DEFAULT_TEXT_DEPTH = 2;
 const TEXT_MAX_CHARS = 20;
-
-function buildRadialHeightMap(controlPoints, closed = true) {
-  const bezierPoints = generateBezierPoints(controlPoints, 80, closed);
-  const map = bezierPoints.map(p => ({
-    r: Math.max(0, p.x),
-    y: -p.y,
-  }));
-  map.sort((a, b) => a.r - b.r);
-  return map;
-}
-
-function getHeightAtRadius(r, heightMap) {
-  if (!heightMap || heightMap.length === 0) return 0;
-  if (r <= heightMap[0].r) return heightMap[0].y;
-  if (r >= heightMap[heightMap.length - 1].r) return heightMap[heightMap.length - 1].y;
-  for (let i = 0; i < heightMap.length - 1; i++) {
-    const a = heightMap[i];
-    const b = heightMap[i + 1];
-    if (r >= a.r && r <= b.r) {
-      const t = (r - a.r) / (b.r - a.r);
-      return a.y + t * (b.y - a.y);
-    }
-  }
-  return heightMap[heightMap.length - 1].y;
-}
-
-function conformTextToSurface(textGeometry, heightMap, discTopY) {
-  const pos = textGeometry.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const z = pos.getZ(i);
-    const r = Math.sqrt(x * x + z * z);
-    const surfaceY = getHeightAtRadius(r, heightMap);
-    const offset = surfaceY - discTopY;
-    pos.setY(i, pos.getY(i) + offset);
-  }
-  pos.needsUpdate = true;
-  textGeometry.computeVertexNormals();
-  textGeometry.computeBoundingBox();
-}
 
 export function createTextGeometry(designName, font, options = {}) {
   const name = (designName || '').trim();
@@ -55,26 +14,19 @@ export function createTextGeometry(designName, font, options = {}) {
   try {
     const size = options.size ?? DEFAULT_TEXT_SIZE;
     const depth = options.depth ?? DEFAULT_TEXT_DEPTH;
-    const curveSegments = options.curveSegments ?? 8;
     const geo = new TextGeometry(text, {
       font,
       size,
       depth,
-      curveSegments,
+      curveSegments: 6,
       bevelEnabled: false,
     });
-    geo.computeVertexNormals();
     geo.computeBoundingBox();
     const center = new THREE.Vector3();
     geo.boundingBox.getCenter(center);
     geo.translate(-center.x, -center.y, -center.z);
     geo.rotateX(-Math.PI / 2);
-    if (!geo.index) {
-      const vertexCount = geo.attributes.position.count;
-      const indices = new Array(vertexCount);
-      for (let i = 0; i < vertexCount; i++) indices[i] = i;
-      geo.setIndex(new THREE.BufferAttribute(new Uint32Array(indices), 1));
-    }
+    geo.computeVertexNormals();
     return geo;
   } catch (e) {
     console.warn('createTextGeometry failed:', e);
@@ -83,140 +35,102 @@ export function createTextGeometry(designName, font, options = {}) {
 }
 
 export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font, textOptions = {}) {
-  const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
+  const discGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
   const name = (designName || '').trim();
+
   if (!font || !name) {
-    return { disc: latheGeometry, text: null, combined: latheGeometry };
+    return { disc: discGeometry, text: null, combined: discGeometry };
   }
 
+  const depth = textOptions.depth ?? DEFAULT_TEXT_DEPTH;
   const textGeometry = createTextGeometry(designName, font, {
     size: textOptions.size ?? DEFAULT_TEXT_SIZE,
-    depth: textOptions.depth ?? DEFAULT_TEXT_DEPTH,
+    depth,
   });
+
   if (!textGeometry) {
-    return { disc: latheGeometry, text: null, combined: latheGeometry };
+    return { disc: discGeometry, text: null, combined: discGeometry };
   }
 
-  latheGeometry.computeBoundingBox();
-  const discTopY = latheGeometry.boundingBox.max.y;
+  discGeometry.computeBoundingBox();
+  const discTopY = discGeometry.boundingBox.max.y;
 
   textGeometry.computeBoundingBox();
   const textMinY = textGeometry.boundingBox.min.y;
-  const textMaxY = textGeometry.boundingBox.max.y;
-  const textHeight = textMaxY - textMinY;
-  const embedDepth = textHeight * 0.4;
 
-  textGeometry.translate(0, discTopY - textMinY - embedDepth, 0);
+  const embedAmount = depth * 0.75;
+  const translateY = discTopY - textMinY - embedAmount;
+  textGeometry.translate(0, translateY, 0);
+  textGeometry.computeBoundingBox();
 
-  const heightMap = buildRadialHeightMap(controlPoints, closed);
-  conformTextToSurface(textGeometry, heightMap, discTopY);
+  const discNI = discGeometry.clone().toNonIndexed();
+  const textNI = textGeometry.clone().toNonIndexed();
+  discNI.deleteAttribute('uv');
+  textNI.deleteAttribute('uv');
+  const combinedForSTL = mergeGeometries([discNI, textNI]);
+  if (combinedForSTL) combinedForSTL.computeVertexNormals();
 
-  let combined = latheGeometry;
-  try {
-    const discBrush = new Brush(latheGeometry);
-    discBrush.updateMatrixWorld();
-
-    const textBrush = new Brush(textGeometry);
-    textBrush.updateMatrixWorld();
-
-    const evaluator = new Evaluator();
-    const resultBrush = evaluator.evaluate(discBrush, textBrush, ADDITION);
-
-    combined = resultBrush.geometry;
-    combined.computeVertexNormals();
-    console.log('[CSG] Union succeeded, vertices:', combined.attributes.position.count);
-  } catch (e) {
-    console.warn('[CSG] Union failed, using merge fallback:', e);
-    const merged = mergeGeometries([latheGeometry, textGeometry]);
-    if (merged) {
-      merged.computeVertexNormals();
-      combined = merged;
-    }
-  }
-
-  return { disc: latheGeometry, text: textGeometry, combined };
+  return {
+    disc: discGeometry,
+    text: textGeometry,
+    combined: combinedForSTL || discGeometry,
+  };
 }
 
 export function createLatheGeometry(controlPoints, segments = 64, resolution = 'medium', closed = true) {
   const resolutionMap = {
     low: { radialSegments: 24, curveSegments: 20 },
     medium: { radialSegments: 48, curveSegments: 40 },
-    high: { radialSegments: 96, curveSegments: 80 }
+    high: { radialSegments: 96, curveSegments: 80 },
   };
-  
+
   const { radialSegments, curveSegments } = resolutionMap[resolution];
-  
   const bezierPoints = generateBezierPoints(controlPoints, curveSegments, closed);
-  
-  if (bezierPoints.length < 2) {
-    throw new Error('Not enough points for geometry');
-  }
-  
+
+  if (bezierPoints.length < 2) throw new Error('Not enough points for geometry');
+
   const profilePoints = bezierPoints.map(p => new THREE.Vector2(Math.max(0, p.x), -p.y));
-  
   const geometry = new THREE.LatheGeometry(profilePoints, radialSegments, 0, Math.PI * 2);
   geometry.computeVertexNormals();
-  
   return geometry;
 }
 
 export function geometryToSTL(geometry) {
   const vertices = geometry.attributes.position;
   const indices = geometry.index;
-  
-  let triangles = '';
-  
-  const getVertex = (index) => {
-    return {
-      x: vertices.getX(index),
-      y: vertices.getY(index),
-      z: vertices.getZ(index)
-    };
-  };
-  
-  const calculateNormal = (v1, v2, v3) => {
-    const u = { x: v2.x - v1.x, y: v2.y - v1.y, z: v2.z - v1.z };
-    const v = { x: v3.x - v1.x, y: v3.y - v1.y, z: v3.z - v1.z };
-    
-    const nx = u.y * v.z - u.z * v.y;
-    const ny = u.z * v.x - u.x * v.z;
-    const nz = u.x * v.y - u.y * v.x;
-    
+
+  const getVertex = (i) => ({
+    x: vertices.getX(i),
+    y: vertices.getY(i),
+    z: vertices.getZ(i),
+  });
+
+  const calcNormal = (v1, v2, v3) => {
+    const ux = v2.x - v1.x, uy = v2.y - v1.y, uz = v2.z - v1.z;
+    const vx = v3.x - v1.x, vy = v3.y - v1.y, vz = v3.z - v1.z;
+    const nx = uy * vz - uz * vy;
+    const ny = uz * vx - ux * vz;
+    const nz = ux * vy - uy * vx;
     const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
-    if (len === 0) return { x: 0, y: 1, z: 0 };
-    
-    return { x: nx / len, y: ny / len, z: nz / len };
+    return len === 0 ? { x: 0, y: 1, z: 0 } : { x: nx / len, y: ny / len, z: nz / len };
   };
-  
+
   const numTriangles = indices ? indices.count / 3 : vertices.count / 3;
-  
+  let triangles = '';
+
   for (let i = 0; i < numTriangles; i++) {
-    let i1, i2, i3;
-    
-    if (indices) {
-      i1 = indices.getX(i * 3);
-      i2 = indices.getX(i * 3 + 1);
-      i3 = indices.getX(i * 3 + 2);
-    } else {
-      i1 = i * 3;
-      i2 = i * 3 + 1;
-      i3 = i * 3 + 2;
-    }
-    
-    const v1 = getVertex(i1);
-    const v2 = getVertex(i2);
-    const v3 = getVertex(i3);
-    const normal = calculateNormal(v1, v2, v3);
-    
-    triangles += `  facet normal ${normal.x} ${normal.y} ${normal.z}\n`;
-    triangles += `    outer loop\n`;
+    const i1 = indices ? indices.getX(i * 3)     : i * 3;
+    const i2 = indices ? indices.getX(i * 3 + 1) : i * 3 + 1;
+    const i3 = indices ? indices.getX(i * 3 + 2) : i * 3 + 2;
+    const v1 = getVertex(i1), v2 = getVertex(i2), v3 = getVertex(i3);
+    const n = calcNormal(v1, v2, v3);
+    triangles += `  facet normal ${n.x} ${n.y} ${n.z}\n    outer loop\n`;
     triangles += `      vertex ${v1.x} ${v1.y} ${v1.z}\n`;
     triangles += `      vertex ${v2.x} ${v2.y} ${v2.z}\n`;
     triangles += `      vertex ${v3.x} ${v3.y} ${v3.z}\n`;
-    triangles += `    endloop\n`;
-    triangles += `  endfacet\n`;
+    triangles += `    endloop\n  endfacet\n`;
   }
-  
+
   return `solid disc\n${triangles}endsolid disc`;
 }
 
@@ -224,7 +138,6 @@ export function downloadSTL(geometry, filename = 'disc_design.stl') {
   const stlContent = geometryToSTL(geometry);
   const blob = new Blob([stlContent], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
-  
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;

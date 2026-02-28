@@ -133,16 +133,13 @@ The application runs on port 5000.
   - Eliminates floating text gap visible in slicer software
   - Added user-adjustable text SIZE (4-24) and HEIGHT (0.5-8) sliders in toolbar
   - Default text depth increased from 1.2 to 2 for better readability in slicers
-- 2026-02-28: Replaced text integration with CSG boolean union
-  - Uses three-bvh-csg library for proper Constructive Solid Geometry operations
-  - Text is generated as a clean flat extrusion
-  - Text vertices conformed to disc surface via radial height map (buildRadialHeightMap + conformTextToSurface)
-  - Each text vertex Y is offset by the disc's surface height at that radial distance, so text follows the dome
-  - Positioned to overlap the disc surface (40% embedded, 60% protruding)
-  - CSG ADDITION (union) merges conformed text and disc into one watertight solid (~61k vertices)
-  - Viewer renders disc and text as separate meshes for visual contrast (text gets brighter material)
-  - STL export uses the CSG-combined geometry for a proper single-body solid
-  - Falls back to simple merge if CSG fails
+- 2026-02-28: Text on disc — clean geometry approach
+  - Text is generated as a flat extrusion (TextGeometry, no vertex warping)
+  - Positioned to overlap the disc surface: 75% of text depth embedded, 25% protruding
+  - STL export: disc and text merged via mergeGeometries (toNonIndexed + uv stripped for compatibility) into one file
+  - Modern slicers (Cura, PrusaSlicer) correctly handle overlapping mesh bodies as a union during slicing
+  - Viewer renders disc and text as separate meshes with distinct materials (text is brighter/more reflective)
+  - No CSG used (avoids non-manifold issues from vertex warping)
 
 ## Mobile/Touch Support
 
