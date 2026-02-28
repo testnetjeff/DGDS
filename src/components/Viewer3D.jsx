@@ -4,16 +4,16 @@ import { OrbitControls, Environment } from '@react-three/drei';
 import * as THREE from 'three';
 import { createDiscGeometryWithText } from '../utils/geometry';
 
-function DiscMesh({ geometry, color }) {
-  const meshRef = useRef();
+function DiscMesh({ discGeometry, textGeometry, color }) {
+  const groupRef = useRef();
   
   useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = state.clock.elapsedTime * 0.1;
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.1;
     }
   });
 
-  const material = useMemo(() => {
+  const discMaterial = useMemo(() => {
     return new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(color),
       metalness: 0.1,
@@ -25,12 +25,32 @@ function DiscMesh({ geometry, color }) {
     });
   }, [color]);
 
+  const textMaterial = useMemo(() => {
+    const hsl = {};
+    new THREE.Color(color).getHSL(hsl);
+    const textColor = new THREE.Color().setHSL(hsl.h, hsl.s * 0.5, Math.min(hsl.l * 1.8, 0.95));
+    return new THREE.MeshPhysicalMaterial({
+      color: textColor,
+      metalness: 0.3,
+      roughness: 0.15,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.1,
+      reflectivity: 0.8,
+      envMapIntensity: 1.2,
+    });
+  }, [color]);
+
   return (
-    <mesh ref={meshRef} geometry={geometry} material={material} castShadow receiveShadow />
+    <group ref={groupRef}>
+      <mesh geometry={discGeometry} material={discMaterial} castShadow receiveShadow />
+      {textGeometry && (
+        <mesh geometry={textGeometry} material={textMaterial} castShadow receiveShadow />
+      )}
+    </group>
   );
 }
 
-function Scene({ geometry, color }) {
+function Scene({ discGeometry, textGeometry, color }) {
   return (
     <>
       <ambientLight intensity={0.4} />
@@ -38,7 +58,7 @@ function Scene({ geometry, color }) {
       <directionalLight position={[-10, -5, -5]} intensity={0.3} />
       <pointLight position={[0, 20, 0]} intensity={0.5} />
       
-      <DiscMesh geometry={geometry} color={color} />
+      <DiscMesh discGeometry={discGeometry} textGeometry={textGeometry} color={color} />
       
       <OrbitControls 
         enableDamping 
@@ -59,7 +79,7 @@ function Scene({ geometry, color }) {
 }
 
 export default function Viewer3D({ controlPoints, color, resolution, designName = '', font = null, textSize = 12, textDepth = 2 }) {
-  const geometry = useMemo(() => {
+  const result = useMemo(() => {
     if (!controlPoints || controlPoints.length < 4) return null;
     try {
       return createDiscGeometryWithText(controlPoints, 64, resolution, true, designName, font, { size: textSize, depth: textDepth });
@@ -69,7 +89,7 @@ export default function Viewer3D({ controlPoints, color, resolution, designName 
     }
   }, [controlPoints, resolution, designName, font, textSize, textDepth]);
 
-  if (!geometry) {
+  if (!result) {
     return (
       <div style={{
         width: '100%',
@@ -91,7 +111,7 @@ export default function Viewer3D({ controlPoints, color, resolution, designName 
       style={{ background: '#0a0a0a' }}
       shadows
     >
-      <Scene geometry={geometry} color={color} />
+      <Scene discGeometry={result.disc} textGeometry={result.text} color={color} />
     </Canvas>
   );
 }

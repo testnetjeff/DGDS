@@ -42,17 +42,7 @@ export function createTextGeometry(designName, font, options = {}) {
   }
 }
 
-export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font, textOptions = {}) {
-  const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
-  const name = (designName || '').trim();
-  if (!font || !name) return latheGeometry;
-
-  const textGeometry = createTextGeometry(designName, font, {
-    size: textOptions.size ?? DEFAULT_TEXT_SIZE,
-    depth: textOptions.depth ?? DEFAULT_TEXT_DEPTH,
-  });
-  if (!textGeometry) return latheGeometry;
-
+export function positionTextOnDisc(textGeometry, latheGeometry) {
   latheGeometry.computeBoundingBox();
   const discTopY = latheGeometry.boundingBox.max.y;
 
@@ -63,7 +53,27 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
 
   const embedDepth = textHeight * 0.4;
   textGeometry.translate(0, discTopY - textMinY - embedDepth, 0);
+  return textGeometry;
+}
 
+export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font, textOptions = {}) {
+  const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
+  const name = (designName || '').trim();
+  if (!font || !name) {
+    return { disc: latheGeometry, text: null, combined: latheGeometry };
+  }
+
+  const textGeometry = createTextGeometry(designName, font, {
+    size: textOptions.size ?? DEFAULT_TEXT_SIZE,
+    depth: textOptions.depth ?? DEFAULT_TEXT_DEPTH,
+  });
+  if (!textGeometry) {
+    return { disc: latheGeometry, text: null, combined: latheGeometry };
+  }
+
+  positionTextOnDisc(textGeometry, latheGeometry);
+
+  let combined = latheGeometry;
   try {
     const discBrush = new Brush(latheGeometry);
     discBrush.updateMatrixWorld();
@@ -74,18 +84,18 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
     const evaluator = new Evaluator();
     const resultBrush = evaluator.evaluate(discBrush, textBrush, ADDITION);
 
-    const resultGeometry = resultBrush.geometry;
-    resultGeometry.computeVertexNormals();
-    return resultGeometry;
+    combined = resultBrush.geometry;
+    combined.computeVertexNormals();
   } catch (e) {
     console.warn('CSG union failed, falling back to simple merge:', e);
     const merged = mergeGeometries([latheGeometry, textGeometry]);
     if (merged) {
       merged.computeVertexNormals();
-      return merged;
+      combined = merged;
     }
-    return latheGeometry;
   }
+
+  return { disc: latheGeometry, text: textGeometry, combined };
 }
 
 export function createLatheGeometry(controlPoints, segments = 64, resolution = 'medium', closed = true) {

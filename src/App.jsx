@@ -120,7 +120,8 @@ export default function App() {
     if (!generatedPoints) return;
     
     try {
-      const geometry = createDiscGeometryWithText(generatedPoints, 64, resolution, true, designName, font, { size: textSize, depth: textDepth });
+      const result = createDiscGeometryWithText(generatedPoints, 64, resolution, true, designName, font, { size: textSize, depth: textDepth });
+      const geometry = result.combined || result.disc;
       const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'disc_design';
       downloadSTL(geometry, `${safeName}.stl`);
       setStatusMessage("STL export complete. Manufacturing readiness confirmed.");
