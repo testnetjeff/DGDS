@@ -133,6 +133,13 @@ The application runs on port 5000.
   - Eliminates floating text gap visible in slicer software
   - Added user-adjustable text SIZE (4-24) and HEIGHT (0.5-8) sliders in toolbar
   - Default text depth increased from 1.2 to 2 for better readability in slicers
+- 2026-02-28: Replaced text integration with CSG boolean union
+  - Uses three-bvh-csg library for proper Constructive Solid Geometry operations
+  - Text is generated as a clean flat extrusion (no vertex warping)
+  - Positioned to overlap the disc surface (40% embedded, 60% protruding)
+  - CSG ADDITION (union) merges text and disc into one watertight solid
+  - Produces clean geometry for slicer software without jagged edges
+  - Falls back to simple merge if CSG fails
 
 ## Mobile/Touch Support
 

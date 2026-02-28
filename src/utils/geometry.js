@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { Brush, Evaluator, ADDITION } from 'three-bvh-csg';
 import { generateBezierPoints } from './bezier';
 
 const DEFAULT_TEXT_SIZE = 12;
@@ -41,89 +42,50 @@ export function createTextGeometry(designName, font, options = {}) {
   }
 }
 
-function buildSurfaceHeightMap(controlPoints, curveSegments, closed) {
-  const bezierPoints = generateBezierPoints(controlPoints, curveSegments, closed);
-  const profilePoints = bezierPoints.map(p => ({
-    radius: Math.max(0, p.x),
-    height: -p.y
-  }));
-
-  const heightMap = new Map();
-  for (const pt of profilePoints) {
-    const rKey = Math.round(pt.radius * 100) / 100;
-    const existing = heightMap.get(rKey);
-    if (existing === undefined || pt.height > existing) {
-      heightMap.set(rKey, pt.height);
-    }
-  }
-
-  const sorted = Array.from(heightMap.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([radius, height]) => ({ radius, height }));
-
-  return sorted;
-}
-
-function getHeightAtRadius(heightMap, r) {
-  if (heightMap.length === 0) return 0;
-  if (r <= heightMap[0].radius) return heightMap[0].height;
-  if (r >= heightMap[heightMap.length - 1].radius) return heightMap[heightMap.length - 1].height;
-
-  for (let i = 0; i < heightMap.length - 1; i++) {
-    if (r >= heightMap[i].radius && r <= heightMap[i + 1].radius) {
-      const t = (r - heightMap[i].radius) / (heightMap[i + 1].radius - heightMap[i].radius);
-      return heightMap[i].height + t * (heightMap[i + 1].height - heightMap[i].height);
-    }
-  }
-  return heightMap[heightMap.length - 1].height;
-}
-
 export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font, textOptions = {}) {
-  const resolutionMap = {
-    low: { curveSegments: 20 },
-    medium: { curveSegments: 40 },
-    high: { curveSegments: 80 }
-  };
   const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
   const name = (designName || '').trim();
   if (!font || !name) return latheGeometry;
+
   const textGeometry = createTextGeometry(designName, font, {
     size: textOptions.size ?? DEFAULT_TEXT_SIZE,
     depth: textOptions.depth ?? DEFAULT_TEXT_DEPTH,
   });
   if (!textGeometry) return latheGeometry;
 
-  const curveSegs = resolutionMap[resolution]?.curveSegments ?? 40;
-  const heightMap = buildSurfaceHeightMap(controlPoints, curveSegs, closed);
+  latheGeometry.computeBoundingBox();
+  const discTopY = latheGeometry.boundingBox.max.y;
 
   textGeometry.computeBoundingBox();
   const textMinY = textGeometry.boundingBox.min.y;
+  const textMaxY = textGeometry.boundingBox.max.y;
+  const textHeight = textMaxY - textMinY;
 
-  const positions = textGeometry.attributes.position;
-  for (let i = 0; i < positions.count; i++) {
-    const x = positions.getX(i);
-    const y = positions.getY(i);
-    const z = positions.getZ(i);
+  const embedDepth = textHeight * 0.4;
+  textGeometry.translate(0, discTopY - textMinY - embedDepth, 0);
 
-    const r = Math.sqrt(x * x + z * z);
-    const surfaceY = getHeightAtRadius(heightMap, r);
+  try {
+    const discBrush = new Brush(latheGeometry);
+    discBrush.updateMatrixWorld();
 
-    const newY = surfaceY + (y - textMinY);
+    const textBrush = new Brush(textGeometry);
+    textBrush.updateMatrixWorld();
 
-    positions.setY(i, newY);
-  }
+    const evaluator = new Evaluator();
+    const resultBrush = evaluator.evaluate(discBrush, textBrush, ADDITION);
 
-  positions.needsUpdate = true;
-  textGeometry.computeVertexNormals();
-  textGeometry.computeBoundingBox();
-
-  const merged = mergeGeometries([latheGeometry, textGeometry]);
-  if (!merged) {
-    console.warn('mergeGeometries failed (text not added); disc only.');
+    const resultGeometry = resultBrush.geometry;
+    resultGeometry.computeVertexNormals();
+    return resultGeometry;
+  } catch (e) {
+    console.warn('CSG union failed, falling back to simple merge:', e);
+    const merged = mergeGeometries([latheGeometry, textGeometry]);
+    if (merged) {
+      merged.computeVertexNormals();
+      return merged;
+    }
     return latheGeometry;
   }
-  merged.computeVertexNormals();
-  return merged;
 }
 
 export function createLatheGeometry(controlPoints, segments = 64, resolution = 'medium', closed = true) {
