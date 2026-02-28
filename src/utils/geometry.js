@@ -6,7 +6,6 @@ import { generateBezierPoints } from './bezier';
 const TEXT_SIZE = 12;
 const TEXT_DEPTH = 1.2;
 const TEXT_MAX_CHARS = 20;
-const TEXT_RAISE_OFFSET = 1.5;
 
 export function createTextGeometry(designName, font, options = {}) {
   const name = (designName || '').trim();
@@ -42,15 +41,82 @@ export function createTextGeometry(designName, font, options = {}) {
   }
 }
 
+function buildSurfaceHeightMap(controlPoints, curveSegments, closed) {
+  const bezierPoints = generateBezierPoints(controlPoints, curveSegments, closed);
+  const profilePoints = bezierPoints.map(p => ({
+    radius: Math.max(0, p.x),
+    height: -p.y
+  }));
+
+  const heightMap = new Map();
+  for (const pt of profilePoints) {
+    const rKey = Math.round(pt.radius * 100) / 100;
+    const existing = heightMap.get(rKey);
+    if (existing === undefined || pt.height > existing) {
+      heightMap.set(rKey, pt.height);
+    }
+  }
+
+  const sorted = Array.from(heightMap.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([radius, height]) => ({ radius, height }));
+
+  return sorted;
+}
+
+function getHeightAtRadius(heightMap, r) {
+  if (heightMap.length === 0) return 0;
+  if (r <= heightMap[0].radius) return heightMap[0].height;
+  if (r >= heightMap[heightMap.length - 1].radius) return heightMap[heightMap.length - 1].height;
+
+  for (let i = 0; i < heightMap.length - 1; i++) {
+    if (r >= heightMap[i].radius && r <= heightMap[i + 1].radius) {
+      const t = (r - heightMap[i].radius) / (heightMap[i + 1].radius - heightMap[i].radius);
+      return heightMap[i].height + t * (heightMap[i + 1].height - heightMap[i].height);
+    }
+  }
+  return heightMap[heightMap.length - 1].height;
+}
+
 export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font) {
+  const resolutionMap = {
+    low: { curveSegments: 20 },
+    medium: { curveSegments: 40 },
+    high: { curveSegments: 80 }
+  };
   const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
   const name = (designName || '').trim();
   if (!font || !name) return latheGeometry;
   const textGeometry = createTextGeometry(designName, font);
   if (!textGeometry) return latheGeometry;
-  latheGeometry.computeBoundingBox();
-  const discTopY = latheGeometry.boundingBox.max.y;
-  textGeometry.translate(0, discTopY + TEXT_RAISE_OFFSET, 0);
+
+  const curveSegs = resolutionMap[resolution]?.curveSegments ?? 40;
+  const heightMap = buildSurfaceHeightMap(controlPoints, curveSegs, closed);
+
+  textGeometry.computeBoundingBox();
+  const textMinY = textGeometry.boundingBox.min.y;
+  const textMaxY = textGeometry.boundingBox.max.y;
+  const textHeight = textMaxY - textMinY;
+
+  const positions = textGeometry.attributes.position;
+  for (let i = 0; i < positions.count; i++) {
+    const x = positions.getX(i);
+    const y = positions.getY(i);
+    const z = positions.getZ(i);
+
+    const r = Math.sqrt(x * x + z * z);
+    const surfaceY = getHeightAtRadius(heightMap, r);
+
+    const relativeY = textHeight > 0 ? (y - textMinY) / textHeight : 0;
+    const newY = surfaceY + relativeY * TEXT_DEPTH;
+
+    positions.setY(i, newY);
+  }
+
+  positions.needsUpdate = true;
+  textGeometry.computeVertexNormals();
+  textGeometry.computeBoundingBox();
+
   const merged = mergeGeometries([latheGeometry, textGeometry]);
   if (!merged) {
     console.warn('mergeGeometries failed (text not added); disc only.');

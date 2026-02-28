@@ -124,6 +124,13 @@ The application runs on port 5000.
   - Calculates zero-lift angle (α₀) via numerical integration of camber slope
   - Shows lift coefficient, camber ratio, thickness ratio, and aerodynamic parameters
   - Animated step-by-step display matching industrial theme
+  - Draggable terminal window during and after calculation
+- 2026-02-28: Fixed 3D text to sit flush on disc surface
+  - Text vertices are now projected onto the disc's curved top surface
+  - Builds a radius-to-height map from the Bezier profile curve
+  - Each text vertex Y position is interpolated to match the surface at its radial distance
+  - Text follows the curvature of the top plate for proper 3D printing
+  - Eliminates floating text gap visible in slicer software
 
 ## Mobile/Touch Support
 
