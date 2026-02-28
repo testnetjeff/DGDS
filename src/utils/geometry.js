@@ -3,8 +3,8 @@ import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { generateBezierPoints } from './bezier';
 
-const TEXT_SIZE = 12;
-const TEXT_DEPTH = 1.2;
+const DEFAULT_TEXT_SIZE = 12;
+const DEFAULT_TEXT_DEPTH = 2;
 const TEXT_MAX_CHARS = 20;
 
 export function createTextGeometry(designName, font, options = {}) {
@@ -12,8 +12,8 @@ export function createTextGeometry(designName, font, options = {}) {
   if (!name || !font) return null;
   const text = name.length > TEXT_MAX_CHARS ? name.slice(0, TEXT_MAX_CHARS) : name;
   try {
-    const size = options.size ?? TEXT_SIZE;
-    const depth = options.depth ?? TEXT_DEPTH;
+    const size = options.size ?? DEFAULT_TEXT_SIZE;
+    const depth = options.depth ?? DEFAULT_TEXT_DEPTH;
     const curveSegments = options.curveSegments ?? 8;
     const geo = new TextGeometry(text, {
       font,
@@ -78,7 +78,7 @@ function getHeightAtRadius(heightMap, r) {
   return heightMap[heightMap.length - 1].height;
 }
 
-export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font) {
+export function createDiscGeometryWithText(controlPoints, segments = 64, resolution = 'medium', closed = true, designName, font, textOptions = {}) {
   const resolutionMap = {
     low: { curveSegments: 20 },
     medium: { curveSegments: 40 },
@@ -87,7 +87,10 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
   const latheGeometry = createLatheGeometry(controlPoints, segments, resolution, closed);
   const name = (designName || '').trim();
   if (!font || !name) return latheGeometry;
-  const textGeometry = createTextGeometry(designName, font);
+  const textGeometry = createTextGeometry(designName, font, {
+    size: textOptions.size ?? DEFAULT_TEXT_SIZE,
+    depth: textOptions.depth ?? DEFAULT_TEXT_DEPTH,
+  });
   if (!textGeometry) return latheGeometry;
 
   const curveSegs = resolutionMap[resolution]?.curveSegments ?? 40;
@@ -95,8 +98,6 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
 
   textGeometry.computeBoundingBox();
   const textMinY = textGeometry.boundingBox.min.y;
-  const textMaxY = textGeometry.boundingBox.max.y;
-  const textHeight = textMaxY - textMinY;
 
   const positions = textGeometry.attributes.position;
   for (let i = 0; i < positions.count; i++) {
@@ -107,8 +108,7 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
     const r = Math.sqrt(x * x + z * z);
     const surfaceY = getHeightAtRadius(heightMap, r);
 
-    const relativeY = textHeight > 0 ? (y - textMinY) / textHeight : 0;
-    const newY = surfaceY + relativeY * TEXT_DEPTH;
+    const newY = surfaceY + (y - textMinY);
 
     positions.setY(i, newY);
   }

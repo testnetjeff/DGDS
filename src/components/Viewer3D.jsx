@@ -58,16 +58,16 @@ function Scene({ geometry, color }) {
   );
 }
 
-export default function Viewer3D({ controlPoints, color, resolution, designName = '', font = null }) {
+export default function Viewer3D({ controlPoints, color, resolution, designName = '', font = null, textSize = 12, textDepth = 2 }) {
   const geometry = useMemo(() => {
     if (!controlPoints || controlPoints.length < 4) return null;
     try {
-      return createDiscGeometryWithText(controlPoints, 64, resolution, true, designName, font);
+      return createDiscGeometryWithText(controlPoints, 64, resolution, true, designName, font, { size: textSize, depth: textDepth });
     } catch (e) {
       console.error('Geometry error:', e);
       return null;
     }
-  }, [controlPoints, resolution, designName, font]);
+  }, [controlPoints, resolution, designName, font, textSize, textDepth]);
 
   if (!geometry) {
     return (

@@ -58,6 +58,8 @@ export default function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [designName, setDesignName] = useState('Untitled Disc');
+  const [textSize, setTextSize] = useState(12);
+  const [textDepth, setTextDepth] = useState(2);
   const [font, setFont] = useState(null);
   const [showClTerminal, setShowClTerminal] = useState(false);
   const [clCalculationSteps, setClCalculationSteps] = useState([]);
@@ -118,7 +120,7 @@ export default function App() {
     if (!generatedPoints) return;
     
     try {
-      const geometry = createDiscGeometryWithText(generatedPoints, 64, resolution, true, designName, font);
+      const geometry = createDiscGeometryWithText(generatedPoints, 64, resolution, true, designName, font, { size: textSize, depth: textDepth });
       const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'disc_design';
       downloadSTL(geometry, `${safeName}.stl`);
       setStatusMessage("STL export complete. Manufacturing readiness confirmed.");
@@ -455,6 +457,10 @@ export default function App() {
         onLoadDesign={handleLoadDesign}
         designName={designName}
         setDesignName={setDesignName}
+        textSize={textSize}
+        setTextSize={setTextSize}
+        textDepth={textDepth}
+        setTextDepth={setTextDepth}
         onCalculateCl={handleCalculateCl}
         isCalculatingCl={showClTerminal}
         onCalculateCd={handleCalculateCd}
@@ -541,6 +547,8 @@ export default function App() {
                   resolution={resolution}
                   designName={designName}
                   font={font}
+                  textSize={textSize}
+                  textDepth={textDepth}
                 />
                 <ColorPicker color={discColor} setColor={setDiscColor} />
               </>

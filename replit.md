@@ -131,6 +131,8 @@ The application runs on port 5000.
   - Each text vertex Y position is interpolated to match the surface at its radial distance
   - Text follows the curvature of the top plate for proper 3D printing
   - Eliminates floating text gap visible in slicer software
+  - Added user-adjustable text SIZE (4-24) and HEIGHT (0.5-8) sliders in toolbar
+  - Default text depth increased from 1.2 to 2 for better readability in slicers
 
 ## Mobile/Touch Support
 
