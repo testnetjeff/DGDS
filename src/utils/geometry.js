@@ -104,17 +104,15 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
     return { disc: discGeometry, text: null, combined: discGeometry };
   }
 
-  discGeometry.computeBoundingBox();
-  const discTopY = discGeometry.boundingBox.max.y;
-
   textGeometry.computeBoundingBox();
   const textMinY = textGeometry.boundingBox.min.y;
 
-  const translateY = discTopY - textMinY - FIXED_EMBED;
+  const heightMap = buildTopSurfaceHeightMap(discGeometry);
+  const centerSurfaceY = getHeightAtRadius(0, heightMap);
+  const translateY = centerSurfaceY - textMinY - FIXED_EMBED;
   textGeometry.translate(0, translateY, 0);
 
-  const heightMap = buildTopSurfaceHeightMap(discGeometry);
-  conformTextToSurface(textGeometry, heightMap, discTopY);
+  conformTextToSurface(textGeometry, heightMap, centerSurfaceY);
 
   let combined = discGeometry;
   try {

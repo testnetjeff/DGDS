@@ -37,6 +37,10 @@ function DiscMesh({ discGeometry, textGeometry, color }) {
       clearcoatRoughness: 0.1,
       reflectivity: 0.8,
       envMapIntensity: 1.2,
+      side: THREE.DoubleSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
   }, [color]);
 

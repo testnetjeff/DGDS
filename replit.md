@@ -136,8 +136,10 @@ The application runs on port 5000.
 - 2026-03-01: Text surface conforming — correct implementation
   - Text is generated as a flat extrusion then conformed to the disc's dome
   - buildTopSurfaceHeightMap() scans every vertex of the lathe geometry, buckets by radius (0.5 unit bins), keeps maxY per bucket — guaranteed to return top surface height at every radius (no ambiguity with bottom plate)
-  - conformTextToSurface() offsets each text vertex Y by (surfaceHeight(r) - discTopY), bending the text block to follow the dome without distorting letter shapes
-  - Text positioned 75% embedded into disc surface, 25% protruding above
+  - conformTextToSurface() offsets each text vertex Y by (surfaceHeight(r) - centerSurfaceY), bending the text block to follow the dome without distorting letter shapes
+  - Reference height is centerSurfaceY = surfaceHeight(r=0) — the disc top at the center where text is placed. Offsets stay small/proportional outward, preventing triangle normal inversion and backface culling artifacts
+  - Text material uses THREE.DoubleSide + polygon offset to prevent any residual backface culling and z-fighting where text embeds into disc surface
+  - Fixed embedding: 1 unit below surface regardless of HEIGHT slider; HEIGHT slider controls protrusion above surface directly
   - STL export: disc and text merged via mergeGeometries (toNonIndexed + uv stripped) into one file
   - Viewer renders disc and text as separate meshes with distinct materials (text is brighter/more reflective)
   - No CSG used
