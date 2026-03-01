@@ -133,13 +133,14 @@ The application runs on port 5000.
   - Eliminates floating text gap visible in slicer software
   - Added user-adjustable text SIZE (4-24) and HEIGHT (0.5-8) sliders in toolbar
   - Default text depth increased from 1.2 to 2 for better readability in slicers
-- 2026-02-28: Text on disc — clean geometry approach
-  - Text is generated as a flat extrusion (TextGeometry, no vertex warping)
-  - Positioned to overlap the disc surface: 75% of text depth embedded, 25% protruding
-  - STL export: disc and text merged via mergeGeometries (toNonIndexed + uv stripped for compatibility) into one file
-  - Modern slicers (Cura, PrusaSlicer) correctly handle overlapping mesh bodies as a union during slicing
+- 2026-03-01: Text surface conforming — correct implementation
+  - Text is generated as a flat extrusion then conformed to the disc's dome
+  - buildTopSurfaceHeightMap() scans every vertex of the lathe geometry, buckets by radius (0.5 unit bins), keeps maxY per bucket — guaranteed to return top surface height at every radius (no ambiguity with bottom plate)
+  - conformTextToSurface() offsets each text vertex Y by (surfaceHeight(r) - discTopY), bending the text block to follow the dome without distorting letter shapes
+  - Text positioned 75% embedded into disc surface, 25% protruding above
+  - STL export: disc and text merged via mergeGeometries (toNonIndexed + uv stripped) into one file
   - Viewer renders disc and text as separate meshes with distinct materials (text is brighter/more reflective)
-  - No CSG used (avoids non-manifold issues from vertex warping)
+  - No CSG used
 
 ## Mobile/Touch Support
 
