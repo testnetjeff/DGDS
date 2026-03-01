@@ -91,10 +91,13 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
     return { disc: discGeometry, text: null, combined: discGeometry };
   }
 
-  const depth = textOptions.depth ?? DEFAULT_TEXT_DEPTH;
+  const protrusion = textOptions.depth ?? DEFAULT_TEXT_DEPTH;
+  const FIXED_EMBED = 1.0;
+  const totalDepth = protrusion + FIXED_EMBED;
+
   const textGeometry = createTextGeometry(designName, font, {
     size: textOptions.size ?? DEFAULT_TEXT_SIZE,
-    depth,
+    depth: totalDepth,
   });
 
   if (!textGeometry) {
@@ -107,8 +110,7 @@ export function createDiscGeometryWithText(controlPoints, segments = 64, resolut
   textGeometry.computeBoundingBox();
   const textMinY = textGeometry.boundingBox.min.y;
 
-  const embedAmount = depth * 0.75;
-  const translateY = discTopY - textMinY - embedAmount;
+  const translateY = discTopY - textMinY - FIXED_EMBED;
   textGeometry.translate(0, translateY, 0);
 
   const heightMap = buildTopSurfaceHeightMap(discGeometry);
