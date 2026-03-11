@@ -2,7 +2,7 @@ import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import * as THREE from 'three';
-import { createDiscGeometryWithText } from '../utils/geometry';
+import { createLatheGeometry } from '../utils/geometry';
 
 function DiscMesh({ geometry, color }) {
   const meshRef = useRef();
@@ -58,16 +58,16 @@ function Scene({ geometry, color }) {
   );
 }
 
-export default function Viewer3D({ controlPoints, color, resolution, designName = '', font = null }) {
+export default function Viewer3D({ controlPoints, color, resolution }) {
   const geometry = useMemo(() => {
     if (!controlPoints || controlPoints.length < 4) return null;
     try {
-      return createDiscGeometryWithText(controlPoints, 64, resolution, true, designName, font);
+      return createLatheGeometry(controlPoints, 64, resolution, true);
     } catch (e) {
       console.error('Geometry error:', e);
       return null;
     }
-  }, [controlPoints, resolution, designName, font]);
+  }, [controlPoints, resolution]);
 
   if (!geometry) {
     return (
