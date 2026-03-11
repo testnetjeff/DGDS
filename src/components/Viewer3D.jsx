@@ -2,18 +2,18 @@ import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import * as THREE from 'three';
-import { createDiscGeometryWithText } from '../utils/geometry';
+import { createLatheGeometry } from '../utils/geometry';
 
-function DiscMesh({ discGeometry, textGeometry, color }) {
-  const groupRef = useRef();
+function DiscMesh({ geometry, color }) {
+  const meshRef = useRef();
   
   useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.1;
+    if (meshRef.current) {
+      meshRef.current.rotation.y = state.clock.elapsedTime * 0.1;
     }
   });
 
-  const discMaterial = useMemo(() => {
+  const material = useMemo(() => {
     return new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(color),
       metalness: 0.1,
@@ -25,36 +25,12 @@ function DiscMesh({ discGeometry, textGeometry, color }) {
     });
   }, [color]);
 
-  const textMaterial = useMemo(() => {
-    const hsl = {};
-    new THREE.Color(color).getHSL(hsl);
-    const textColor = new THREE.Color().setHSL(hsl.h, hsl.s * 0.5, Math.min(hsl.l * 1.8, 0.95));
-    return new THREE.MeshPhysicalMaterial({
-      color: textColor,
-      metalness: 0.3,
-      roughness: 0.15,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.1,
-      reflectivity: 0.8,
-      envMapIntensity: 1.2,
-      side: THREE.DoubleSide,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-    });
-  }, [color]);
-
   return (
-    <group ref={groupRef}>
-      <mesh geometry={discGeometry} material={discMaterial} castShadow receiveShadow />
-      {textGeometry && (
-        <mesh geometry={textGeometry} material={textMaterial} castShadow receiveShadow />
-      )}
-    </group>
+    <mesh ref={meshRef} geometry={geometry} material={material} castShadow receiveShadow />
   );
 }
 
-function Scene({ discGeometry, textGeometry, color }) {
+function Scene({ geometry, color }) {
   return (
     <>
       <ambientLight intensity={0.4} />
@@ -62,7 +38,7 @@ function Scene({ discGeometry, textGeometry, color }) {
       <directionalLight position={[-10, -5, -5]} intensity={0.3} />
       <pointLight position={[0, 20, 0]} intensity={0.5} />
       
-      <DiscMesh discGeometry={discGeometry} textGeometry={textGeometry} color={color} />
+      <DiscMesh geometry={geometry} color={color} />
       
       <OrbitControls 
         enableDamping 
@@ -82,18 +58,18 @@ function Scene({ discGeometry, textGeometry, color }) {
   );
 }
 
-export default function Viewer3D({ controlPoints, color, resolution, designName = '', font = null, textSize = 12, textDepth = 2 }) {
-  const result = useMemo(() => {
+export default function Viewer3D({ controlPoints, color, resolution }) {
+  const geometry = useMemo(() => {
     if (!controlPoints || controlPoints.length < 4) return null;
     try {
-      return createDiscGeometryWithText(controlPoints, 64, resolution, true, designName, font, { size: textSize, depth: textDepth });
+      return createLatheGeometry(controlPoints, 64, resolution, true);
     } catch (e) {
       console.error('Geometry error:', e);
       return null;
     }
-  }, [controlPoints, resolution, designName, font, textSize, textDepth]);
+  }, [controlPoints, resolution]);
 
-  if (!result) {
+  if (!geometry) {
     return (
       <div style={{
         width: '100%',
@@ -115,7 +91,7 @@ export default function Viewer3D({ controlPoints, color, resolution, designName 
       style={{ background: '#0a0a0a' }}
       shadows
     >
-      <Scene discGeometry={result.disc} textGeometry={result.text} color={color} />
+      <Scene geometry={geometry} color={color} />
     </Canvas>
   );
 }

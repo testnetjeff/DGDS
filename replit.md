@@ -125,6 +125,11 @@ The application runs on port 5000.
   - Shows lift coefficient, camber ratio, thickness ratio, and aerodynamic parameters
   - Animated step-by-step display matching industrial theme
   - Draggable terminal window during and after calculation
+- 2026-03-11: Removed 3D text embossing feature (reverted to match GitHub repo)
+  - Text geometry, font loading, and text sliders removed from all components
+  - geometry.js now only contains createLatheGeometry, geometryToSTL, downloadSTL
+  - Viewer3D renders disc only (no text mesh)
+  - STL export outputs disc geometry without text
 - 2026-02-28: Fixed 3D text to sit flush on disc surface
   - Text vertices are now projected onto the disc's curved top surface
   - Builds a radius-to-height map from the Bezier profile curve

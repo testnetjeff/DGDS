@@ -14,9 +14,7 @@ import LdRevealOverlay from './components/LdRevealOverlay';
 import StatusBar from './components/StatusBar';
 import { getDefaultDiscProfile } from './utils/bezier';
 import { validateProfile } from './utils/pdgaConstraints';
-import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
-import helvetikerBold from './assets/fonts/helvetiker_bold.typeface.json';
-import { createDiscGeometryWithText, downloadSTL } from './utils/geometry';
+import { createLatheGeometry, downloadSTL } from './utils/geometry';
 import { calculateLiftCoefficient } from './utils/thinAirfoil';
 import { calculateDragCoefficient } from './utils/dragCoefficient';
 import { serializeProject, deserializeProject, downloadProject } from './utils/projectIO';
@@ -58,9 +56,6 @@ export default function App() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [designName, setDesignName] = useState('Untitled Disc');
-  const [textSize, setTextSize] = useState(12);
-  const [textDepth, setTextDepth] = useState(2);
-  const [font, setFont] = useState(null);
   const [showClTerminal, setShowClTerminal] = useState(false);
   const [clCalculationSteps, setClCalculationSteps] = useState([]);
   const [clResult, setClResult] = useState(null);
@@ -81,15 +76,6 @@ export default function App() {
     const storedTutorial = localStorage.getItem('dgds_tutorial_shown');
     if (storedTutorial === 'true') {
       setShowTutorial(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const loader = new FontLoader();
-    try {
-      setFont(loader.parse(helvetikerBold));
-    } catch (err) {
-      console.error('Font parse failed:', err);
     }
   }, []);
 
@@ -120,8 +106,7 @@ export default function App() {
     if (!generatedPoints) return;
     
     try {
-      const result = createDiscGeometryWithText(generatedPoints, 64, resolution, true, designName, font, { size: textSize, depth: textDepth });
-      const geometry = result.combined || result.disc;
+      const geometry = createLatheGeometry(generatedPoints, 64, resolution, true);
       const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'disc_design';
       downloadSTL(geometry, `${safeName}.stl`);
       setStatusMessage("STL export complete. Manufacturing readiness confirmed.");
@@ -129,7 +114,7 @@ export default function App() {
       console.error('Export error:', e);
       setStatusMessage("Export failed. Geometry recalculation required.");
     }
-  }, [generatedPoints, resolution, designName, font]);
+  }, [generatedPoints, resolution, designName]);
 
   const handlePdgaModeChange = (enabled) => {
     setPdgaMode(enabled);
@@ -458,10 +443,6 @@ export default function App() {
         onLoadDesign={handleLoadDesign}
         designName={designName}
         setDesignName={setDesignName}
-        textSize={textSize}
-        setTextSize={setTextSize}
-        textDepth={textDepth}
-        setTextDepth={setTextDepth}
         onCalculateCl={handleCalculateCl}
         isCalculatingCl={showClTerminal}
         onCalculateCd={handleCalculateCd}
@@ -546,10 +527,6 @@ export default function App() {
                   controlPoints={generatedPoints}
                   color={discColor}
                   resolution={resolution}
-                  designName={designName}
-                  font={font}
-                  textSize={textSize}
-                  textDepth={textDepth}
                 />
                 <ColorPicker color={discColor} setColor={setDiscColor} />
               </>

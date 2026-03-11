@@ -22,10 +22,6 @@ export default function Toolbar({
   onLoadDesign,
   designName,
   setDesignName,
-  textSize,
-  setTextSize,
-  textDepth,
-  setTextDepth,
   onCalculateCl,
   isCalculatingCl,
   onCalculateCd,
@@ -72,38 +68,6 @@ export default function Toolbar({
           placeholder="Enter design name"
           maxLength={50}
         />
-      </div>
-
-      <div className="toolbar-section text-settings-section">
-        <span className="label mono">TEXT:</span>
-        <div className="text-setting">
-          <span className="text-setting-label mono">SIZE</span>
-          <input
-            type="range"
-            className="text-slider"
-            min="4"
-            max="24"
-            step="1"
-            value={textSize}
-            onChange={(e) => setTextSize(Number(e.target.value))}
-            title={`Font size: ${textSize}`}
-          />
-          <span className="text-setting-value mono">{textSize}</span>
-        </div>
-        <div className="text-setting">
-          <span className="text-setting-label mono">HEIGHT</span>
-          <input
-            type="range"
-            className="text-slider"
-            min="0.5"
-            max="8"
-            step="0.5"
-            value={textDepth}
-            onChange={(e) => setTextDepth(Number(e.target.value))}
-            title={`Extrusion height: ${textDepth}`}
-          />
-          <span className="text-setting-value mono">{textDepth}</span>
-        </div>
       </div>
 
       <div className="toolbar-section">
