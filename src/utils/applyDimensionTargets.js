@@ -132,8 +132,8 @@ function applyNoseRadius(controlPoints, geo, targetNoseRadius) {
 /** Adjust dome anchor (max y in top region) to approximate target dome radius. */
 function applyDomeRadius(controlPoints, geo, targetDomeRadius) {
   if (geo == null || targetDomeRadius == null || targetDomeRadius <= 0) return controlPoints;
-  const current = geo.domeRadius;
-  if (current == null || current <= 0) return controlPoints;
+  const current = geo.domeRadius ?? 2000;
+  if (current <= 0) return controlPoints;
   const anchors = getAnchors(controlPoints);
   const topAnchors = anchors.filter(a => a.x >= geo.minX && a.x <= geo.shoulderX);
   if (topAnchors.length === 0) return controlPoints;
