@@ -6,7 +6,7 @@ import './DimensionsToolbar.css';
 const MIN_PANEL_WIDTH = 320;
 const MIN_PANEL_HEIGHT = 180;
 const DEFAULT_PANEL_WIDTH = 520;
-const DEFAULT_PANEL_HEIGHT = 420;
+const DEFAULT_PANEL_HEIGHT = 480;
 
 const DIMENSION_TOOLTIPS = {
   diameter: { title: 'Diameter', body: 'Total width of the disc. PDGA limits 210–215 mm. Affects glide and speed class.' },
@@ -32,10 +32,22 @@ const DIMENSION_KEYS = [
   { key: 'shoulderSlantDeg', label: 'Shoulder', unit: '°', currentKey: 'shoulderSlantStr' },
 ];
 
+const SLIDER_RANGES = {
+  diameter:          { min: 130,  max: 260,  step: 0.5 },
+  height:            { min: 1,    max: 50,   step: 0.5 },
+  rimWidth:          { min: 0.5,  max: 30,   step: 0.1 },
+  rimDepth:          { min: 0.5,  max: 30,   step: 0.1 },
+  insideRimDiameter: { min: 100,  max: 240,  step: 0.5 },
+  noseRadius:        { min: 0.5,  max: 50,   step: 0.1 },
+  partingLineHeight: { min: 0,    max: 30,   step: 0.1 },
+  domeRadius:        { min: 1,    max: 500,  step: 1   },
+  shoulderSlantDeg:  { min: 0,    max: 90,   step: 0.5 },
+};
+
 export default function DimensionsToolbar({ controlPoints, onControlPointsChange }) {
   const [position, setPosition] = useState(() => ({
     x: 10,
-    y: Math.max(80, (typeof window !== 'undefined' ? window.innerHeight : 600) - 420)
+    y: Math.max(80, (typeof window !== 'undefined' ? window.innerHeight : 600) - 480)
   }));
   const [size, setSize] = useState({ width: DEFAULT_PANEL_WIDTH, height: DEFAULT_PANEL_HEIGHT });
   const [isDragging, setIsDragging] = useState(false);
@@ -133,6 +145,17 @@ export default function DimensionsToolbar({ controlPoints, onControlPointsChange
     setFormValues(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleSliderChange = (key, rawValue) => {
+    setError(null);
+    const num = parseFloat(rawValue);
+    if (!Number.isFinite(num)) return;
+    setFormValues(prev => ({ ...prev, [key]: String(num) }));
+    const result = applyDimensionTargets(controlPoints, { [key]: num });
+    if (!result.error) {
+      onControlPointsChange(result.controlPoints);
+    }
+  };
+
   const handleApply = () => {
     setError(null);
     const targets = {};
@@ -158,6 +181,14 @@ export default function DimensionsToolbar({ controlPoints, onControlPointsChange
   };
 
   const metrics = getProfileMetrics(controlPoints);
+
+  const getSliderValue = (key) => {
+    const fromForm = parseFloat(formValues[key]);
+    if (Number.isFinite(fromForm)) return fromForm;
+    const fromMetrics = metrics?.[key];
+    if (Number.isFinite(fromMetrics)) return fromMetrics;
+    return SLIDER_RANGES[key].min;
+  };
 
   const scaleW = size.width / DEFAULT_PANEL_WIDTH;
   const scaleH = size.height / DEFAULT_PANEL_HEIGHT;
@@ -230,6 +261,16 @@ export default function DimensionsToolbar({ controlPoints, onControlPointsChange
                   value={formValues[key] ?? ''}
                   onChange={(e) => handleFormChange(key, e.target.value)}
                   aria-label={`New ${label}`}
+                />
+                <input
+                  type="range"
+                  className="dim-slider"
+                  min={SLIDER_RANGES[key].min}
+                  max={SLIDER_RANGES[key].max}
+                  step={SLIDER_RANGES[key].step}
+                  value={getSliderValue(key)}
+                  onChange={(e) => handleSliderChange(key, e.target.value)}
+                  aria-label={`${label} slider`}
                 />
               </div>
             ))}

@@ -159,6 +159,14 @@ The application is fully touch-enabled for phones and tablets:
 
 All buttons and controls have minimum 44px touch targets for easy tapping on mobile.
 
+- 2026-03-11: Added real-time dimension sliders to DimensionsToolbar
+  - Each of the 9 dimension fields now has a range slider below its text input
+  - Dragging a slider immediately calls applyDimensionTargets and updates the 2D canvas profile in real time
+  - Slider values initialize to the current profile metric so they start at the right position
+  - Text input and slider stay in sync — moving a slider updates the text input value
+  - Apply button continues to work for manually typed values
+  - Sliders styled in Alumicube Industrial theme (steel-blue thumb, dark track, scales with panel resize)
+
 ## Future Roadmap
 
 - Undo/redo functionality
