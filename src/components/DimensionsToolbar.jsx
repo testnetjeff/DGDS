@@ -58,6 +58,12 @@ export default function DimensionsToolbar({ controlPoints, onControlPointsChange
   const [error, setError] = useState(null);
   const [tooltipKey, setTooltipKey] = useState(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const latestControlPointsRef = useRef(controlPoints);
+  const sliderBaseRef = useRef(null);
+
+  useEffect(() => {
+    latestControlPointsRef.current = controlPoints;
+  }, [controlPoints]);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -145,12 +151,17 @@ export default function DimensionsToolbar({ controlPoints, onControlPointsChange
     setFormValues(prev => ({ ...prev, [key]: value }));
   };
 
+  const handleSliderPointerDown = () => {
+    sliderBaseRef.current = latestControlPointsRef.current;
+  };
+
   const handleSliderChange = (key, rawValue) => {
     setError(null);
     const num = parseFloat(rawValue);
     if (!Number.isFinite(num)) return;
     setFormValues(prev => ({ ...prev, [key]: String(num) }));
-    const result = applyDimensionTargets(controlPoints, { [key]: num });
+    const base = sliderBaseRef.current ?? latestControlPointsRef.current;
+    const result = applyDimensionTargets(base, { [key]: num });
     if (!result.error) {
       onControlPointsChange(result.controlPoints);
     }
@@ -269,6 +280,7 @@ export default function DimensionsToolbar({ controlPoints, onControlPointsChange
                   max={SLIDER_RANGES[key].max}
                   step={SLIDER_RANGES[key].step}
                   value={getSliderValue(key)}
+                  onPointerDown={handleSliderPointerDown}
                   onChange={(e) => handleSliderChange(key, e.target.value)}
                   aria-label={`${label} slider`}
                 />
