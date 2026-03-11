@@ -129,36 +129,31 @@ function applyNoseRadius(controlPoints, geo, targetNoseRadius) {
   return pts;
 }
 
-/** Adjust dome anchor (max y in top region) to approximate target dome radius. */
+/**
+ * Set dome curvature by positioning the dome apex using the sagitta formula.
+ * dome_height = shoulderX² / (2 * R)  →  apex Y = shoulderY + dome_height
+ * This is absolute (not ratio-based), so it never compounds errors or explodes.
+ */
 function applyDomeRadius(controlPoints, geo, targetDomeRadius) {
   if (geo == null || targetDomeRadius == null || targetDomeRadius <= 0) return controlPoints;
-  const current = geo.domeRadius ?? 2000;
-  if (current <= 0) return controlPoints;
   const anchors = getAnchors(controlPoints);
-  const topAnchors = anchors.filter(a => a.x >= geo.minX && a.x <= geo.shoulderX);
+  const topAnchors = anchors.filter(a => a.x >= 0 && a.x <= geo.shoulderX);
   if (topAnchors.length === 0) return controlPoints;
   const domeAnchor = topAnchors.reduce((best, a) => (a.y > best.y ? a : best), topAnchors[0]);
   const globalIdx = domeAnchor.originalIndex;
   const anchor = controlPoints[globalIdx];
   if (!anchor) return controlPoints;
-  const factor = Math.sqrt(targetDomeRadius / current);
+  const chordHalfWidth = geo.shoulderX;
+  const targetDomeHeight = (chordHalfWidth * chordHalfWidth) / (2 * targetDomeRadius);
+  const targetDomeY = geo.shoulderY + targetDomeHeight;
+  const dy = targetDomeY - anchor.y;
+  if (Math.abs(dy) < LENGTH_TOL) return controlPoints;
   const pts = clonePoints(controlPoints);
+  pts[globalIdx] = { ...pts[globalIdx], y: targetDomeY };
   const hOut = pts[globalIdx + 1];
   const hIn = pts[globalIdx - 1];
-  if (hOut?.type === 'control') {
-    pts[globalIdx + 1] = {
-      ...hOut,
-      x: anchor.x + (hOut.x - anchor.x) * factor,
-      y: anchor.y + (hOut.y - anchor.y) * factor
-    };
-  }
-  if (hIn?.type === 'control') {
-    pts[globalIdx - 1] = {
-      ...hIn,
-      x: anchor.x + (hIn.x - anchor.x) * factor,
-      y: anchor.y + (hIn.y - anchor.y) * factor
-    };
-  }
+  if (hOut?.type === 'control') pts[globalIdx + 1] = { ...hOut, y: hOut.y + dy };
+  if (hIn?.type === 'control') pts[globalIdx - 1] = { ...hIn, y: hIn.y + dy };
   return pts;
 }
 
@@ -273,11 +268,8 @@ export function applyDimensionTargets(controlPoints, targets) {
     }
   }
   if (t.domeRadius != null && t.domeRadius > 0) {
-    const current = geo.domeRadius;
-    if (current == null || current <= 0 || Math.abs(current - t.domeRadius) > LENGTH_TOL) {
-      pts = applyDomeRadius(pts, geo, t.domeRadius);
-      geo = getProfileGeometry(pts);
-    }
+    pts = applyDomeRadius(pts, geo, t.domeRadius);
+    geo = getProfileGeometry(pts);
   }
   if (t.shoulderSlantDeg != null && Number.isFinite(t.shoulderSlantDeg)) {
     const current = geo.shoulderSlantDeg;

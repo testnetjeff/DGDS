@@ -40,7 +40,7 @@ const SLIDER_RANGES = {
   insideRimDiameter: { min: 100,  max: 240,  step: 0.5 },
   noseRadius:        { min: 0.5,  max: 50,   step: 0.1 },
   partingLineHeight: { min: 0,    max: 30,   step: 0.1 },
-  domeRadius:        { min: 1,    max: 500,  step: 1   },
+  domeRadius:        { min: 200,  max: 2000, step: 10  },
   shoulderSlantDeg:  { min: 0,    max: 90,   step: 0.5 },
 };
 
