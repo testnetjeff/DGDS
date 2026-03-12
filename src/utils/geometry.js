@@ -13,7 +13,45 @@ export function createLatheGeometry(controlPoints, segments = 64, resolution = '
 
   if (bezierPoints.length < 2) throw new Error('Not enough points for geometry');
 
-  const profilePoints = bezierPoints.map(p => new THREE.Vector2(Math.max(0, p.x), -p.y));
+  const pts = bezierPoints.map(p => ({ x: Math.max(0, p.x), y: -p.y }));
+  const n = pts.length;
+
+  const minX = Math.min(...pts.map(p => p.x));
+  const axisThreshold = minX + 1.0;
+
+  let topIdx = 0, topBest = -Infinity;
+  let botIdx = 0, botBest = Infinity;
+  pts.forEach((p, i) => {
+    if (p.x <= axisThreshold) {
+      if (p.y > topBest) { topBest = p.y; topIdx = i; }
+      if (p.y < botBest) { botBest = p.y; botIdx = i; }
+    }
+  });
+
+  const extractArc = (fromIdx, toIdx, dir) => {
+    const arc = [];
+    let i = fromIdx;
+    let guard = 0;
+    while (i !== toIdx && guard < n + 1) {
+      arc.push(pts[i]);
+      i = (i + dir + n) % n;
+      guard++;
+    }
+    arc.push(pts[toIdx]);
+    return arc;
+  };
+
+  const arc1 = extractArc(topIdx, botIdx, 1);
+  const arc2 = extractArc(topIdx, botIdx, -1);
+  const maxX1 = Math.max(...arc1.map(p => p.x));
+  const maxX2 = Math.max(...arc2.map(p => p.x));
+  const outerArc = maxX1 >= maxX2 ? arc1 : arc2;
+
+  outerArc[0] = { x: 0, y: outerArc[0].y };
+  outerArc[outerArc.length - 1] = { x: 0, y: outerArc[outerArc.length - 1].y };
+
+  const profilePoints = outerArc.map(p => new THREE.Vector2(p.x, p.y));
+
   const geometry = new THREE.LatheGeometry(profilePoints, radialSegments, 0, Math.PI * 2);
   geometry.computeVertexNormals();
   return geometry;
