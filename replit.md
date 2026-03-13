@@ -167,6 +167,21 @@ All buttons and controls have minimum 44px touch targets for easy tapping on mob
   - Apply button continues to work for manually typed values
   - Sliders styled in Alumicube Industrial theme (steel-blue thumb, dark track, scales with panel resize)
 
+- 2026-03-13: Physics-based flight simulator (items 1 & 2)
+  - Created `src/utils/flightPhysics.js` — Euler physics integrator
+    - `calculateAerodynamics(controlPoints, aoaDeg)`: computes Cₗ (from thin airfoil theory), Cᴅ (estimated from thicknessRatio, rimDepthRatio, rimWidthRatio), and L/D — all derived from actual disc geometry
+    - `simulateFlightPhysics(controlPoints, throwPower)`: full Euler integration at dt=0.04s using real forces: Lift = ½ρv²ACₗ, Drag = ½ρv²ACᴅ, Gravity. Lateral motion (turn/fade) driven by gyroscopic model: spin decays exponentially (ω₀=120 rad/s, τ=1/0.018s), turn force from understability at high spin, fade force from overstability as spin decays. Stability coefficient derived from PLH, rim width ratio, and camber ratio. Every unique disc geometry → unique flight path.
+  - Updated `src/utils/flightNumbers.js` — Speed/Glide/Turn/Fade now aerodynamics-based
+    - Glide = f(L/D) directly (not heuristic)
+    - Turn/Fade = f(stability coefficient from geometry)
+    - Speed = f(rim width ratio, disc diameter class)
+  - Revamped `src/components/FlightSimulator.jsx`
+    - Aerodynamics panel: shows Cₗ, Cᴅ, L/D, estimated range (ft), max apex height (ft), disc class label (UNDERSTABLE/NEUTRAL/OVERSTABLE/VERY OVERSTABLE)
+    - Throw power slider (20%–100%) — changes velocity, recalculates physics in real time
+    - Top-down view: distance rings (100/200/300/400/500 ft), velocity-colored trail, range label
+    - Side view: velocity-colored height arc, Y-axis height labels, apex marker (▲ Xft orange label), apex dashed drop line
+    - All outputs in feet; internal physics in SI units (meters, seconds, Newtons)
+
 ## Future Roadmap
 
 - Undo/redo functionality
